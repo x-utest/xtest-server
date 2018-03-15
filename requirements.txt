@@ -1,0 +1,14 @@
+# python package requirements
+
+requests==2.10.0
+
+#mongodb
+#aiomotorengine
+https://github.com/ilex/aiomotorengine/archive/master.zip
+greenlet==0.4.13
+
+tornado==4.3
+#torndsession==1.1.4
+ujson==1.35
+
+tabulate==0.8.2

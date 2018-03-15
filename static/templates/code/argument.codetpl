@@ -1,0 +1,162 @@
+
+#路由值
+(r"/%s/create-{{low_cls_name}}/" % app_path, Create{{cls_name}}),
+(r"/%s/read-{{low_cls_name}}/" % app_path, Read{{cls_name}}),
+(r"/%s/update-{{low_cls_name}}/" % app_path, Update{{cls_name}}),
+(r"/%s/delete-{{low_cls_name}}/" % app_path, Delete{{cls_name}}),
+(r"/%s/list-{{low_cls_name}}/" % app_path, List{{cls_name}}),#分页列表
+
+#region  {{cls_name}} CRUBL
+
+class Create{{cls_name}}(BaseHandler):
+    """
+    创建{{cls_name}}
+    """
+    def get(self):
+        self.write('get')
+
+    @cor_login_required
+    @coroutine
+    def post(self):
+        #表单提取
+        {%for x in line%}
+        {{x}} = self.get_argument("{{x}}",None){%end%}
+
+        #空值检查
+        if list_have_none_mem(*[{%for x in line%}{{x}},{%end%}]) is True:
+            raise Return(ConstData.msg_args_wrong)
+
+        #数据表赋值
+        doc_obj = {{cls_name}}()
+        {%for x in line%}
+        doc_obj.{{x}} = {{x}}{%end%}
+        doc_obj.set_default_rc_tag()
+        yield doc_obj.save()
+
+        raise Return(ConstData.msg_succeed)
+
+
+class Read{{cls_name}}(BaseHandler):
+    """
+    创建{{cls_name}}
+    """
+    def get(self):
+        self.write('get')
+
+    def post(self):
+        self.write('post')
+
+
+class Update{{cls_name}}(BaseHandler):
+    """
+    更新{{cls_name}}
+    """
+    def get(self):
+        self.write('get')
+
+    def post(self):
+        self.write('post')
+
+
+class Delete{{cls_name}}(BaseHandler):
+    """
+    删除{{cls_name}}
+    """
+    def get(self):
+        self.write('get')
+
+    def post(self):
+        self.write('post')
+
+class List{{cls_name}}(BaseHandler):
+    """
+    分页列表{{cls_name}}
+    """
+    def get(self):
+        self.write('get')
+
+    def post(self):
+        self.write('post')
+
+
+#endregion
+
+
+#region 接口测试脚本
+
+class {{cls_name}}ApiTest(BaseTest):
+    """
+    本项目的重要的接口测试脚本，需要登录的
+    """
+
+    def test_create_{{underline_cls_name}}(self):
+        """
+        """
+        url = "%s/%s/create-{{low_cls_name}}/" % (self.base_url, app_path)
+
+        params = dict({%for x in line%}
+            {{x}} = 'xxx',{%end%}
+        )
+
+        res = self.se_req.post(url, data=params)
+        dlog.debug(res.text)
+        res_dict = json.loads(res.text)
+        self.assertEqual(res_dict['code'], 200)
+
+    def test_read_{{underline_cls_name}}(self):
+        """
+        """
+        url = "%s/%s/read-{{low_cls_name}}/" % (self.base_url, app_path)
+        self.assertTrue(True)
+
+    def test_update_{{underline_cls_name}}(self):
+        """
+        """
+        url = "%s/%s/update-{{low_cls_name}}/" % (self.base_url, app_path)
+
+        params = dict({%for x in line%}
+            {{x}} = 'xxx',{%end%}
+        )
+
+        res = self.se_req.post(url, data=params)
+        dlog.debug(res.text)
+        res_dict = json.loads(res.text)
+        self.assertEqual(res_dict['code'], 200)
+
+
+    def test_delete_{{underline_cls_name}}(self):
+        """
+        """
+        url = "%s/%s/delete-{{low_cls_name}}/" % (self.base_url, app_path)
+
+        params = dict({%for x in line%}
+            {{x}} = 'xxx',{%end%}
+        )
+
+        res = self.se_req.post(url, data=params)
+        dlog.debug(res.text)
+        res_dict = json.loads(res.text)
+        self.assertEqual(res_dict['code'], 200)
+
+    def test_list_{{underline_cls_name}}(self):
+        """
+        """
+        url = "%s/%s/list-{{low_cls_name}}/" % (self.base_url, app_path)
+        self.assertTrue(True)
+
+
+#endregion
+
+
+#前端分页代码
+
+<thead>
+<tr>{%for x in line%}
+    <th>{{x}}</th>{%end%}
+</tr>
+</thead>
+<tbody >
+<tr ng-repeat="lis in myList">{%for x in line%}
+    <td ng-bind="lis.{{x}}" class="left_td"></td>{%end%}
+</tr>
+</tbody>
