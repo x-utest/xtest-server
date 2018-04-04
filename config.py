@@ -23,10 +23,23 @@ settings = {
 HTTP_PORT = 8011  # 启动本app的端口
 SERVER_PROCESS = 0  # 设置进程数，0表示利用所有的CPU核心
 
+# 根据环境变量，切换开发态和生产态
+try:
+    docker_flag = os.environ.get('DOCKER', "")
+    # TODO: add online config.
+    if docker_flag == '1':
+        mongo_host = 'mongo'
+        print('Run in docker!')
+    else:
+        mongo_host = '127.0.0.1'
+except:
+    print("Unexpected error:", sys.exc_info()[0])
+    raise
+
 # ======Mongodb===
 mongodb_cfg = DbSetting(
     alias='default',
-    host='127.0.0.1',
+    host=mongo_host,
     port=27017,
     db_name='xtest',
     user_name='xtest',
@@ -37,22 +50,7 @@ mongodb_cfg = DbSetting(
 LOGGING_LEVEL = logging.ERROR  # 日志输出的级别
 LOGGING_STREAM = '/dev/stdout'  # 重定向到控制台
 
-AUTOTEST_CMD = 'python /api-test-template/run.py'     # 自动化测试脚本
-
-# 根据环境变量，切换开发态和生产态
-try:
-    dev_flag = os.environ.get('DEV_MACHINE', "")
-    # TODO: add online config.
-    # if dev_flag == '1':
-    #     from localdev_config import *
-    #
-    #     print("run in localdev settings...")
-    #
-    # else:
-    #     print("run in produce settings...")
-except:
-    print("Unexpected error:", sys.exc_info()[0])
-    raise
+AUTOTEST_CMD = 'python /api-test-template/run.py'  # 自动化测试脚本
 
 if __name__ == '__main__':
     # BASE_DIR = os.path.abspath('.')
