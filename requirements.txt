@@ -12,3 +12,7 @@ tornado==4.3
 ujson==1.35
 
 tabulate==0.8.2
+
+# xtest base
+https://github.com/our-dev/dtlib/archive/master.zip
+https://github.com/x-utest/xtest-server-base/archive/master.zip
