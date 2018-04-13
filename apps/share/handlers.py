@@ -204,8 +204,12 @@ class GetProjectShareData(MyBaseHandler):
 
         mongo_coon = self.get_async_mongo()
         mycol = mongo_coon['unit_test_data']
-        res = mycol.find({"pro_id": ObjectId(str(share_obj.pro_id))}, {"details": 0},
-                         sort=[('rc_time', pymongo.DESCENDING)])
+        res = mycol.find(
+            {
+                "pro_id": ObjectId(str(share_obj.pro_id)),
+                "is_del": False
+            }, {"details": 0},
+            sort=[('rc_time', pymongo.DESCENDING)])
 
         page_count = await res.count()
         msg_details = res.skip(page_size * (page_idx - 1)).limit(page_size)  # 进行分页
