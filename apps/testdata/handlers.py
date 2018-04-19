@@ -361,7 +361,7 @@ class CreateUnitTestData(MyAppBaseHandler):
         req_dict = wrap_project_tag(req_dict, project)  # 加上项目标签
         req_dict = wrap_default_rc_tag(req_dict)  # 加上默认的标签
         req_dict = wrap_org_tag(req_dict, str(pro_org_id))  # 加上组织的标签
-        insert_res = await mongo_coon.unit_test_data.insert(wrap_default_rc_tag(req_dict))
+        insert_res = await mongo_coon.unit_test_data.insert(req_dict)
 
         return ConstData.msg_succeed
 
