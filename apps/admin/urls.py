@@ -45,4 +45,9 @@ url = [
 
     (r"/%s/reset-admin-password/" % app_path, ResetAdminPassword),  # 使用 super_token 重置 admin 用户的密码
     (r"/%s/is-admin/" % app_path, IsAdmin),  # 是否是超级管理员
+    (r"/%s/get-user-list/" % app_path, GetUserList),  # 获取用户列表
+    (r"/%s/add-user/" % app_path, AddUser),  # 添加用户
+    (r"/%s/delete-user/" % app_path, DeleteUser),  # 删除用户
+    (r"/%s/lock-user/" % app_path, LockUser),  # 锁定用户
+    (r"/%s/unlock-user/" % app_path, UnlockUser),  # 解锁用户
 ]

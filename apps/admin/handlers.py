@@ -1,8 +1,9 @@
 from datetime import datetime
 
 from dtlib import jsontool
-from dtlib.aio.decos import my_async_jsonp
+from dtlib.web.decos import deco_jsonp
 from dtlib.aio.decos import my_async_paginator
+from dtlib.aio.base_mongo import wrap_default_rc_tag
 from dtlib.dtlog import dlog
 from dtlib.timetool import get_current_utc_time
 from dtlib.tornado.account_docs import MisWeChatUser, User
@@ -19,6 +20,8 @@ from xt_base.base_server import MyBaseHandler
 from xt_base.utils import get_org_data
 from xt_base.utils import user_id_is_legal
 from xt_base.document.acl_docs import UserGrpRel
+from dtlib.utils import list_have_none_mem, get_rand_salt, hashlibmd5with_salt
+from bson import ObjectId
 
 
 class ListUserInfo(MyBaseHandler):
@@ -27,7 +30,7 @@ class ListUserInfo(MyBaseHandler):
     """
 
     @token_required()
-    @my_async_jsonp
+    @deco_jsonp
     @perm_check
     @my_async_paginator
     async def get(self):
@@ -47,7 +50,7 @@ class DeleteUser(MyBaseHandler):
     """
 
     @token_required()
-    @my_async_jsonp
+    @deco_jsonp
     @perm_check
     async def get(self):
         user_id = self.get_argument("user_id", None)
@@ -65,7 +68,7 @@ class OnlineUser(MyBaseHandler):
     """
 
     @token_required()
-    @my_async_jsonp
+    @deco_jsonp
     @perm_check
     @my_async_paginator
     async def get(self):
@@ -90,7 +93,7 @@ class ListApiCallCount(MyBaseHandler):
     """
 
     @token_required()
-    @my_async_jsonp
+    @deco_jsonp
     @perm_check
     @my_async_paginator
     async def get(self):
@@ -103,7 +106,7 @@ class GetLogHistory(MyBaseHandler):
     """
 
     @token_required()
-    @my_async_jsonp
+    @deco_jsonp
     @perm_check
     @my_async_paginator
     async def get(self):
@@ -112,7 +115,7 @@ class GetLogHistory(MyBaseHandler):
 
 class GetUserCounts(MyBaseHandler):
     @token_required()
-    @my_async_jsonp
+    @deco_jsonp
     async def get(self):
         """
         获取注册用户统计信息：
@@ -121,8 +124,8 @@ class GetUserCounts(MyBaseHandler):
         :return:
         """
         col_name = 'g_users'
-        mongo_coon = self.get_async_mongo()
-        mycol = mongo_coon[col_name]
+        mongo_conn = self.get_async_mongo()
+        mycol = mongo_conn[col_name]
 
         total_cnts = await mycol.find().count()  # 总的用户数
 
@@ -146,7 +149,7 @@ class SetUserActiveStatus(MyBaseHandler):
     """
 
     @token_required()
-    @my_async_jsonp
+    @deco_jsonp
     async def get(self):
         user_obj_id = self.get_argument('user_obj_id', None)
         is_set_active = self.get_argument('active', None)
@@ -175,7 +178,7 @@ class LoginHistory(MyBaseHandler):
     """
 
     @token_required()
-    @my_async_jsonp
+    @deco_jsonp
     @my_async_paginator
     async def get(self):
         """
@@ -204,7 +207,7 @@ class ResetAdminPassword(MyBaseHandler):
     重置 admin 用户的密码
     """
 
-    @my_async_jsonp
+    @deco_jsonp
     async def post(self):
         super_token = "3fb13a601c4111e8801f448a5b61a7f0bcb70841"
         req_dict = self.get_post_body_dict()
@@ -229,7 +232,7 @@ class IsAdmin(MyBaseHandler):
     """
 
     @token_required()
-    @my_async_jsonp
+    @deco_jsonp
     async def get(self):
         user = self.get_current_session_user()  # 获取当前用户
         grp_rel = await UserGrpRel.objects.get(user=user)
@@ -250,3 +253,229 @@ class IsAdmin(MyBaseHandler):
                 result=False
             )
             return get_std_json_response(data=jsontool.dumps(res))
+
+
+class AddUser(MyBaseHandler):
+    """
+    添加用户
+    """
+
+    def __init__(self, *args, **kwargs):
+        super(AddUser, self).__init__(*args, **kwargs)
+
+    @token_required()
+    @deco_jsonp()
+    async def post(self, *args, **kwargs):
+        post_json = self.get_post_body_dict()
+        user_id = post_json.get('user_id', None)
+        password = post_json.get('password', None)
+        nickname = post_json.get('nickname', "默认昵称")
+
+        if list_have_none_mem(*[user_id, password]) or user_id == 'admin':
+            return ConstData.msg_args_wrong
+        mongo_conn = self.get_async_mongo()
+        mycol = mongo_conn['g_users']
+
+        res = await mycol.find_one({
+            'user_id': user_id
+        })
+        _id = None
+        if res:
+            if res['is_del'] is False:
+                return ConstData.msg_exist
+            _id = res['_id']
+
+        rand_salt = get_rand_salt()
+        data = dict(
+            nickname=nickname,
+            user_id=user_id,
+            passwd=hashlibmd5with_salt(password, rand_salt),
+            salt=rand_salt,
+        )
+
+        data = wrap_default_rc_tag(data)  # 加上默认的标签
+        if _id:
+            await mycol.update({'_id': _id}, {'$set': data}, upsert=True)
+        else:
+            _id = await mycol.insert(data)
+
+        # todo: select orgnization
+        user_org_col = mongo_conn['user_org_rel']
+        res = await user_org_col.find_one({
+            'user': _id
+        })
+        if not res:
+            org_col = mongo_conn['organization']
+            res = await org_col.find_one({
+                'is_del': False,
+            })
+            org_name = res['name']
+        else:
+            org_name = res['org_name']
+        org_id = res['_id']
+        data = dict(
+            user_name=nickname,
+            user=_id,
+            organization=org_id,
+            is_active=True,
+            org_name=org_name,
+            is_default=False,
+            is_owner=False,
+            is_current=True
+        )
+
+        data = wrap_default_rc_tag(data)  # 加上默认的标签
+        await user_org_col.update({'_id': org_id}, {'$set': data}, upsert=True)
+        return ConstData.msg_succeed
+
+
+class DeleteUser(MyBaseHandler):
+    """
+    删除用户, 安全删除
+    """
+
+    def __init__(self, *args, **kwargs):
+        super(DeleteUser, self).__init__(*args, **kwargs)
+
+    @token_required()
+    @deco_jsonp()
+    async def post(self, *args, **kwargs):
+        # todo: judge is admin
+        post_json = self.get_post_body_dict()
+        _id = post_json.get('_id', None)
+        _id = ObjectId(_id)
+
+        if list_have_none_mem(*[_id]):
+            return ConstData.msg_args_wrong
+        mongo_conn = self.get_async_mongo()
+        mycol = mongo_conn['g_users']
+
+        res = await mycol.find_one({
+            '_id': _id
+        })
+        if res:
+            if res['is_del'] is True or res['user_id'] == 'admin':
+                return ConstData.msg_args_wrong
+
+        data = dict(
+            is_del=True
+        )
+        # todo: set del_time
+        await mycol.update({'_id': ObjectId(_id)}, {'$set': data}, upsert=False)
+
+        # update user_org_rel
+        user_org_col = mongo_conn['user_org_rel']
+        res = await user_org_col.find_one({
+            'user': _id
+        })
+        if res:
+            data = dict(
+                is_del=True
+            )
+            await user_org_col.update({'user': _id}, {'$set': data}, upsert=False)
+
+        return ConstData.msg_succeed
+
+
+class LockUser(MyBaseHandler):
+    """
+    锁定用户, 禁止登录
+    """
+
+    def __init__(self, *args, **kwargs):
+        super(LockUser, self).__init__(*args, **kwargs)
+
+    @token_required()
+    @deco_jsonp()
+    async def post(self, *args, **kwargs):
+        # todo: judge is admin
+        post_json = self.get_post_body_dict()
+        _id = post_json.get('_id', None)
+
+        if list_have_none_mem(*[_id]):
+            return ConstData.msg_args_wrong
+        mongo_conn = self.get_async_mongo()
+        mycol = mongo_conn['g_users']
+
+        res = await mycol.find_one({
+            '_id': _id
+        })
+        if res:
+            if res['is_del'] is True or res['user_id'] == 'admin':
+                return ConstData.msg_args_wrong
+
+        data = dict(
+            is_lock=True
+        )
+        await mycol.update({'_id': ObjectId(_id)}, {'$set': data}, upsert=False)
+        return ConstData.msg_succeed
+
+
+class UnlockUser(MyBaseHandler):
+    """
+    解锁用户
+    """
+
+    def __init__(self, *args, **kwargs):
+        super(UnlockUser, self).__init__(*args, **kwargs)
+
+    @token_required()
+    @deco_jsonp()
+    async def post(self, *args, **kwargs):
+        # todo: judge is admin
+        post_json = self.get_post_body_dict()
+        _id = post_json.get('_id', None)
+
+        if list_have_none_mem(*[_id]):
+            return ConstData.msg_args_wrong
+        mongo_conn = self.get_async_mongo()
+        mycol = mongo_conn['g_users']
+
+        res = await mycol.find_one({
+            '_id': _id
+        })
+        if res:
+            if res['is_del'] is True or res['user_id'] == 'admin':
+                return ConstData.msg_args_wrong
+
+        data = dict(
+            is_lock=False
+        )
+        await mycol.update({'_id': ObjectId(_id)}, {'$set': data}, upsert=False)
+        return ConstData.msg_succeed
+
+
+class GetUserList(MyBaseHandler):
+    """
+    获取用户列表
+    """
+
+    def __init__(self, *args, **kwargs):
+        super(GetUserList, self).__init__(*args, **kwargs)
+
+    # @token_required()
+    @deco_jsonp()
+    async def get(self, *args, **kwargs):
+        """
+        admin用户请求该接口可以获取所有用户列表
+        :param self:
+        :param args:
+        :param kwargs:col_name
+        :return:
+        """
+        # todo: admin
+        show_field = dict(
+            _id=1,
+            user_id=1,
+            nickname=1,
+            is_lock=1
+        )
+        mongo_conn = self.get_async_mongo()
+        mycol = mongo_conn['g_users']
+
+        user_list = mycol.find({
+            "is_del": False
+        }, show_field)  # 升序排列
+        user_cnt = await user_list.count()
+        user_list = await user_list.to_list(user_cnt)
+        return get_std_json_response(data=jsontool.dumps(user_list))
