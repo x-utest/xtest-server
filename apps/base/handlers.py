@@ -25,7 +25,7 @@ class AppInfo(MyBaseHandler):
     获取本web应用的基本信息
     """
 
-    @api_counts()
+    # @api_counts()
     @deco_jsonp(is_async=False)
     def get(self):
         print('run app-info:', app_version)

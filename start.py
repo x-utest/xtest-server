@@ -10,6 +10,7 @@ import asyncio
 import logging
 
 import aiomotorengine
+import motor.motor_asyncio
 from tabulate import tabulate
 
 import config
@@ -57,6 +58,19 @@ async def auth_mongodb(**kwargs):
     if res is True:
         print('mongodb authenticate succeed...')
 
+async def auth_mongo(**kwargs):
+
+    db = kwargs.get('db', None)
+
+    if mongo_conn is None:
+        raise ValueError
+    res = await db.authenticate(
+        mongodb_cfg.user_name,
+        mongodb_cfg.user_pwd,
+    )
+
+    if res is True:
+        print('mongodb authenticate succeed...')
 
 if __name__ == '__main__':
     # 设置日志输出级别
@@ -84,16 +98,18 @@ if __name__ == '__main__':
 
     # 设置Mongodb
     # you only need to keep track of the DB instance if you connect to multiple databases.
-    mongo_conn = aiomotorengine.connect(
-        mongodb_cfg.db_name,
-        host=mongodb_cfg.host,
-        port=mongodb_cfg.port,
-        io_loop=io_loop
-    )
-    mongo_conn.max_pool_size = mongodb_cfg.max_connections  # mongodb连接池最大连接数
-    io_loop.run_until_complete(auth_mongodb(mongo_conn=mongo_conn))  # 数据库认证
+    # mongo_conn = aiomotorengine.connect(
+    #     mongodb_cfg.db_name,
+    #     host=mongodb_cfg.host,
+    #     port=mongodb_cfg.port,
+    #     io_loop=io_loop
+    # )
+    mongo_conn = motor.motor_asyncio.AsyncIOMotorClient(mongodb_cfg.host,mongodb_cfg.port)
+    # mongo_conn.max_pool_size = mongodb_cfg.max_connections  # mongodb连接池最大连接数
+    db=mongo_conn.xtest
+    io_loop.run_until_complete(auth_mongo(db=db))  # 数据库认证
 
     # 设置异步mongo连接，方便后续直接非ORM操作，比如请求大量的数据
-    app.set_async_mongo(mongo_conn)
+    app.set_async_mongo(db)
 
     io_loop.run_forever()

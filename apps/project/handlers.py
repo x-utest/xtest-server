@@ -3,14 +3,15 @@ from bson import ObjectId
 from dtlib import jsontool
 from dtlib.aio.decos import my_async_jsonp, my_async_paginator
 from dtlib.tornado.decos import token_required
-from dtlib.tornado.docs import TestDataApp
 from dtlib.utils import list_have_none_mem
 from dtlib.web.constcls import ConstData
 from dtlib.web.tools import get_std_json_response
 
-from xt_base.document.base_docs import Project
 from xt_base.utils import get_org_data
 from xt_base.utils import get_org_data_paginator
+
+from dtlib.web.decos import deco_jsonp
+from dtlib.tornado.utils import set_default_rc_tag
 
 
 class ListProjectsNote(MyBaseHandler):
@@ -24,14 +25,18 @@ class ListProjectsNote(MyBaseHandler):
         project_id = self.get_argument('project_id', None)
         if project_id is None:
             return ConstData.msg_args_wrong
-        project_obj = await Project.objects.get(id=ObjectId(str(project_id)))
-        organization = project_obj.organization
-        test_data_app = await TestDataApp.objects.get(organization=organization)
-        data = dict()
-        data['project_name'] = project_obj.project_name
-        data['project_id'] = project_obj._id
-        data['app_id'] = test_data_app.app_id
-        data['app_key'] = test_data_app.app_key
+        db = self.get_async_mongo()
+        proj_col = db.test_project
+        project_obj = await proj_col.find_one({'_id': ObjectId(str(project_id))})
+        organization = project_obj['organization']
+        app_col = db.test_data_app
+        test_data_app = await app_col.find_one({'organization': organization})
+        data = dict(
+            project_name=project_obj['project_name'],
+            project_id=project_obj['_id'],
+            app_id=test_data_app['app_id'],
+            app_key=test_data_app['app_key']
+        )
         res_str = get_std_json_response(code=200, data=jsontool.dumps(data))
 
         return res_str
@@ -53,18 +58,27 @@ class CreateTestProject(MyBaseHandler):
         organization = await self.get_organization()
         user = self.get_current_session_user()
 
-        project_obj = Project()
-        project_obj.project_name = project_name
-        project_obj.mark = mark
-        project_obj.organization = organization
-        project_obj.org_name = organization.name
-        project_obj.owner = user
-        project_obj.owner_name = user.nickname
-        project_obj.set_default_rc_tag()
+        db = self.get_async_mongo()
+        proj_col = db.test_project
+        org_col = db.organization
+        org_res = await org_col.find_one({'_id': ObjectId(organization)})
+        org_name = org_res['name']
+        user_col = db.g_users
+        user_res = await user_col.find_one({'_id': ObjectId(user)})
+        user_nickname = user_res['nickname']
+        new_data = dict(
+            project_name=project_name,
+            mark=mark,
+            organization=organization,
+            org_name=org_name,
+            owner=user,
+            owner_name=user_nickname,
+        )
+        new_data = set_default_rc_tag(new_data)
 
-        result = await project_obj.save()
+        result = await proj_col.insert(new_data)
 
-        res_str = get_std_json_response(code=200, data=jsontool.dumps(result.to_dict()))
+        res_str = get_std_json_response(code=200, data=jsontool.dumps(result))
 
         return res_str
 
@@ -87,22 +101,25 @@ class UpdateTestProject(MyBaseHandler):
             return ConstData.msg_args_wrong
 
         # todo 做资源归属和权限的判断
-        project_obj = await Project.objects.get(id=ObjectId(str(id)))
+        db = self.get_async_mongo()
+        proj_col = db.test_project
+        project_obj = await proj_col.find_one({'_id': ObjectId(str(id))})
         user_org = await self.get_organization()
 
-        if (project_obj is None) or (project_obj.organization is None):
+        organization = project_obj['organization']
+        if (project_obj is None) or (organization is None):
             return ConstData.msg_forbidden
 
-        pro_org_id = project_obj.organization.get_id()
-        if pro_org_id != user_org.get_id():
+        pro_org_id = organization
+        if pro_org_id != user_org:
             return ConstData.msg_forbidden
 
-        project_obj.project_name = project_name
-        project_obj.mark = mark
-
-        result = await project_obj.save()
-
-        res_str = get_std_json_response(code=200, data=jsontool.dumps(result.to_dict()))
+        data = dict(
+            project_name=project_name,
+            mark=mark
+        )
+        result = await proj_col.update({'_id': ObjectId(str(id))}, {'$set': data}, upsert=False)
+        res_str = get_std_json_response(code=200, data=jsontool.dumps(result))
 
         return res_str
 
@@ -120,18 +137,19 @@ class DeleteTestProject(MyBaseHandler):
             return ConstData.msg_args_wrong
 
         # todo 做资源归属和权限的判断
-        project_obj = await Project.objects.get(id=ObjectId(str(id)))
+        db = self.get_async_mongo()
+        proj_col = db.test_project
+        project_obj = await proj_col.find_one({'_id': ObjectId(str(id))})
         user_org = await self.get_organization()
 
-        if (project_obj is None) or (project_obj.organization is None):
+        if project_obj is None:
             return ConstData.msg_forbidden
 
-        pro_org_id = project_obj.organization.get_id()
-        if pro_org_id != user_org.get_id():
+        pro_org_id = project_obj['organization']
+        if pro_org_id != user_org:
             return ConstData.msg_forbidden
 
-        project_obj.is_del = True
-        result = await project_obj.save()
+        result = await proj_col.update({'_id': ObjectId(str(id))}, {'$set': {'is_del': True}}, upsert=False)
         return ConstData.msg_succeed
 
 
@@ -148,14 +166,16 @@ class ReadProjectsRecord(MyBaseHandler):
             return ConstData.msg_args_wrong
 
         # todo 做资源归属和权限的判断
-        project_obj = await Project.objects.get(id=ObjectId(str(id)))
+        db = self.get_async_mongo()
+        proj_col = db.test_project
+        project_obj = await proj_col.find_one({'_id': ObjectId(str(id))})
         user_org = await self.get_organization()
 
-        if (project_obj is None) or (project_obj.organization is None):
+        if project_obj is None:
             return ConstData.msg_forbidden
 
-        pro_org_id = project_obj.organization.get_id()
-        if pro_org_id != user_org.get_id():
+        pro_org_id = project_obj['organization']
+        if pro_org_id != user_org:
             return ConstData.msg_forbidden
 
         return await get_org_data_paginator(self, col_name='unit_test_data', pro_id=id, hide_fields={'details': 0})
@@ -170,4 +190,4 @@ class ListProjects(MyBaseHandler):
     @my_async_jsonp
     @my_async_paginator
     async def get(self):
-        return await get_org_data(self, cls_name=Project)
+        return await get_org_data(self, collection='test_project')
