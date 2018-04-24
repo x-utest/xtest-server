@@ -48,6 +48,5 @@ url = [
     (r"/%s/get-user-list/" % app_path, GetUserList),  # 获取用户列表
     (r"/%s/add-user/" % app_path, AddUser),  # 添加用户
     (r"/%s/delete-user/" % app_path, DeleteUser),  # 删除用户
-    (r"/%s/lock-user/" % app_path, LockUser),  # 锁定用户
-    (r"/%s/unlock-user/" % app_path, UnlockUser),  # 解锁用户
+    (r"/%s/lock-user/" % app_path, LockUser),  # 锁定/解锁用户
 ]

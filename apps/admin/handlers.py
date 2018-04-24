@@ -231,8 +231,9 @@ class LockUser(MyBaseHandler):
         # todo: judge is admin
         post_json = self.get_post_body_dict()
         _id = post_json.get('_id', None)
+        is_lock = post_json.get('is_lock', None)
 
-        if list_have_none_mem(*[_id]):
+        if list_have_none_mem(*[_id, is_lock]):
             return ConstData.msg_args_wrong
         mongo_conn = self.get_async_mongo()
         mycol = mongo_conn['g_users']
@@ -243,43 +244,10 @@ class LockUser(MyBaseHandler):
         if res:
             if res['is_del'] is True or res['user_id'] == 'admin':
                 return ConstData.msg_args_wrong
-
-        data = dict(
-            is_lock=True
-        )
-        await mycol.update({'_id': ObjectId(_id)}, {'$set': data}, upsert=False)
-        return ConstData.msg_succeed
-
-
-class UnlockUser(MyBaseHandler):
-    """
-    解锁用户
-    """
-
-    def __init__(self, *args, **kwargs):
-        super(UnlockUser, self).__init__(*args, **kwargs)
-
-    @token_required()
-    @deco_jsonp()
-    async def post(self, *args, **kwargs):
-        # todo: judge is admin
-        post_json = self.get_post_body_dict()
-        _id = post_json.get('_id', None)
-
-        if list_have_none_mem(*[_id]):
+        if not isinstance(is_lock, bool):
             return ConstData.msg_args_wrong
-        mongo_conn = self.get_async_mongo()
-        mycol = mongo_conn['g_users']
-
-        res = await mycol.find_one({
-            '_id': _id
-        })
-        if res:
-            if res['is_del'] is True or res['user_id'] == 'admin':
-                return ConstData.msg_args_wrong
-
         data = dict(
-            is_lock=False
+            is_lock=is_lock
         )
         await mycol.update({'_id': ObjectId(_id)}, {'$set': data}, upsert=False)
         return ConstData.msg_succeed
@@ -293,7 +261,7 @@ class GetUserList(MyBaseHandler):
     def __init__(self, *args, **kwargs):
         super(GetUserList, self).__init__(*args, **kwargs)
 
-    # @token_required()
+    @token_required()
     @deco_jsonp()
     async def get(self, *args, **kwargs):
         """
