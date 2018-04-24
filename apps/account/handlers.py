@@ -4,7 +4,8 @@ from bson import ObjectId
 from dtlib import jsontool
 from dtlib.aio.decos import my_async_jsonp
 from dtlib.dtlog import dlog
-# from dtlib.randtool import get_uuid1_key
+from dtlib.randtool import get_uuid1_key
+import hashlib
 # from dtlib.tornado.account_docs import Organization, UserOrgRelation, User
 from dtlib.tornado.decos import token_required
 # from dtlib.tornado.docs import UserDetailInfo, UserRegInfo, FeedBackMsg
@@ -20,7 +21,7 @@ from dtlib.web.valuedict import ClientTypeDict
 from config import HTTP_PORT, mongodb_cfg, SERVER_PROCESS
 # from config_api import capt_image_domain
 # from xt_base.document.auth2_docs import MobileAuthPcToken
-from xt_base.utils import user_id_is_legal, create_dft_organization, create_org_app, create_dft_org_rel
+# from xt_base.utils import user_id_is_legal, create_dft_organization, create_org_app, create_dft_org_rel
 import traceback
 
 from dtlib.tornado.utils import set_default_rc_tag
@@ -80,35 +81,34 @@ class AccountInit(MyBaseHandler):
         if res:
             return ConstData.msg_exist
         rand_salt = get_rand_salt()
-        new_user = dict(
-            user_id=user_id,
-            salt=rand_salt,
-            nickname=u_name,
-            passwd=hashlibmd5with_salt(passwd, rand_salt)
-        )
+        new_user = {
+            'user_id': user_id,
+            'salt': rand_salt,
+            'nickname': u_name,
+            'passwd': hashlibmd5with_salt(passwd, rand_salt)
+        }
         new_user = set_default_rc_tag(new_user)
         new_user.update(self.set_template())
         user_res = await user_col.insert(new_user)
         # new_user = await new_user.save()
         # """:type:User"""
 
-        new_user_reg_info = dict(
-            user=user_res,
-            u_name=u_name
-        )
+        new_user_reg_info = {
+            'user': user_res,
+            'u_name': u_name
+        }
 
         new_user_reg_info.update(self.set_http_tag())
         new_user_reg_info = set_default_rc_tag(new_user_reg_info)
         await user_reg_col.insert(new_user_reg_info)
         # await user_reg_info.save()
 
-        org = await create_dft_organization(new_user)
-        await create_dft_org_rel(new_user, org, is_default=False, is_current=True)
-        res = await create_org_app(org)
-        dict = res.to_dict()
-        dict['user'] = new_user.user_id
-        dict['password'] = passwd
-        invite_json = jsontool.dumps(dict, ensure_ascii=False)
+        org = await self.create_dft_organization(new_user_reg_info, is_default=True)
+        await self.create_dft_org_rel(new_user_reg_info, org, is_default=False, is_current=True)
+        res_dict = await self.create_org_app(org)
+        res_dict['user'] = new_user['user_id']
+        res_dict['password'] = passwd
+        invite_json = jsontool.dumps(res_dict, ensure_ascii=False)
         return get_std_json_response(data=invite_json)
 
     @staticmethod
@@ -118,6 +118,84 @@ class AccountInit(MyBaseHandler):
             active=True,
             reg_way=UserRegWay.web
         )
+
+    async def create_dft_organization(self, user, is_default=False):
+        """
+        创建默认的组织
+        :type user: User
+        :parameter is_default:是否是模板组织
+        :return: 
+        """
+        # 为新用户建立默认的小组
+        db = self.get_async_mongo()
+        org_col = db.organization
+        # default_org = Organization()
+
+        new_org = dict(
+            is_default=is_default,
+            owner=user['user'],
+            name = 'group template',  # 默认组织名称和用户昵称一样,后面提供修改接口
+            home_page = 'http://www.my-org-page.org'
+        )
+        new_org = set_default_rc_tag(new_org)
+        # default_org.owner_name = user.nickname  # 冗余
+        org_id = await org_col.insert(new_org)
+        new_org['_id'] = org_id
+        return new_org
+
+    async def create_dft_org_rel(self, user, org,
+                                 is_default=False,
+                                 is_current=False,
+                                 is_activate=True,
+                                 is_owner=True
+                                 ):
+        """
+        为组织和用户建立关联
+        :param user: 
+        :type user:User
+        :type org:Organization
+        :param org: 
+        :return: 
+        """
+        # 建立它们的默认关系
+        db = self.get_async_mongo()
+        user_org_rel_col = db.user_org_rel
+
+        new_rel = dict(
+            organization=org,
+            user=user['user'],
+            is_default=is_default,
+            is_current=is_current,
+            is_owner=is_owner,
+            is_active=is_activate
+        )
+        new_rel = set_default_rc_tag(new_rel)
+        # user_org_rel.user_name = user.nickname  # 冗余
+        return await user_org_rel_col.insert(new_rel)
+
+    async def create_org_app(self, default_org):
+        """
+        为组织创建应用app
+        :param default_org: 
+        :type org:Organization
+        :return: 
+        """
+
+        # default_test_app = TestDataApp()
+        db = self.get_async_mongo()
+        app_col = db.test_data_app
+        new_app = dict(
+            app_id=get_uuid1_key(),
+            app_key=hashlib.md5(get_uuid1_key().encode(encoding='utf-8')).hexdigest(),
+            organization=default_org,
+            o_name=default_org['name'],
+            is_default=True  # 是默认设置的
+        )
+
+        new_app = set_default_rc_tag(new_app)
+        app_id = await app_col.insert(new_app)
+        new_app['_id'] = app_id
+        return new_app
 
 
 class GetAuthUserOrganization(MyBaseHandler):
@@ -317,7 +395,7 @@ class GetUserDetailInfo(MyBaseHandler):
         user_detail = await user_col.find_one({'user': self.get_current_session_user()})
 
         if user_detail is None:  # 如果为空则创建一个
-            return ConstData.msg_fail
+            user_detail = {}
         return get_std_json_response(data=jsontool.dumps(user_detail))
 
 # class GetAuthUserAllOrganizations(MyBaseHandler):
