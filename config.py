@@ -4,7 +4,7 @@ import sys
 
 from dtlib.dbtool import DbSetting
 
-app_version = '3.17.6.12.1'  # 项目版本号
+app_version = '4.18.4.24.1'  # 项目版本号
 test_token = '1234'  # 用于超级管理员调用url的简单的token
 
 # if you use tornado project,this returns the root of the project
@@ -40,10 +40,10 @@ except:
 mongodb_cfg = DbSetting(
     alias='default',
     host=mongo_host,
-    port=27017,
+    port=27027,
     db_name='xtest',
     user_name='xtest',
-    user_pwd='xtest@2018',
+    user_pwd='xtest@2017',
     max_connections=10
 )
 

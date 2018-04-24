@@ -20,7 +20,6 @@ ReadMe
 - 依赖dtlib项目
 - python3.5以上
 - 首次部署时要使用init_app.py初始化
-- 本机要有redis带密码,因为torndsession需要
 - 依赖mongodb
 
 根目录
@@ -55,6 +54,13 @@ ReadMe
 
 发布日志
 ===========
+
+4.18.4.24.1
+---------------
+
+- 去除对aiomotorengine的依赖，改用motor 1.2.1
+- 升级对Mongo3.6的支持，去除对Mongo3.2及以下版本的支持
+- 支持Python3.6
 
 4.18.4.19.1
 ---------------

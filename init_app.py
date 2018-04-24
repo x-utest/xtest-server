@@ -2,8 +2,8 @@
 初始化app的运行环境
 - 多核心环境设计有竞争的资源时,会有线程冲突
 """
-import aiomotorengine
 import asyncio
+import motor
 
 from config import mongodb_cfg
 from dtlib.mongo.utils import set_mongo_ttl_index
@@ -14,13 +14,13 @@ async def init_mongo():
     不能在多核心状态进行设置
     :return:
     """
-    mongo_conn = aiomotorengine.connect(
-        mongodb_cfg.db_name,
+    mongo_conn = motor.MotorClient(
         host=mongodb_cfg.host,
         port=mongodb_cfg.port,
     )
+    db = mongo_conn[mongodb_cfg.db_name]
 
-    res = await mongo_conn.authenticate(
+    res = await db.authenticate(
         mongodb_cfg.user_name,
         mongodb_cfg.user_pwd,
     )

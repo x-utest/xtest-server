@@ -8,7 +8,7 @@ from dtlib.aio.decos import my_async_paginator, my_async_jsonp, my_async_paginat
 from dtlib.dtlog import dlog
 from dtlib.tornado.base_hanlder import MyAppBaseHandler
 from dtlib.tornado.decos import token_required, app_token_required
-from dtlib.tornado.docs import TestDataApp
+# from dtlib.tornado.docs import TestDataApp
 from dtlib.utils import list_have_none_mem
 from dtlib.web.constcls import ConstData
 from dtlib.web.decos import deco_jsonp
@@ -16,9 +16,9 @@ from dtlib.web.tools import get_std_json_response
 from dtlib.web.valuedict import ClientTypeDict
 from pymongo import DESCENDING
 
-from xt_base.document.testdata_docs import ApiTestData, ApiTestDataNote, PerformReport, SafetyTestReport, ApiReqDelay, \
-    PenetrationTestData, PenetrationTestDataNote, ProxyipTestData, FeedbackMsg
-from xt_base.document.base_docs import Project
+# from xt_base.document.testdata_docs import ApiTestData, ApiTestDataNote, PerformReport, SafetyTestReport, ApiReqDelay, \
+#     PenetrationTestData, PenetrationTestDataNote, ProxyipTestData, FeedbackMsg
+# from xt_base.document.base_docs import Project
 from xt_base.utils import get_org_data
 from xt_base.utils import wrap_org_tag, wrap_project_tag, get_org_data_paginator
 
@@ -37,16 +37,9 @@ class ListApiTestData(MyBaseHandler):
     async def get(self):
         pro_id = self.get_argument('pro_id', None)
         if pro_id is None:
-            return await get_org_data(self, cls_name=ApiTestData)
+            return await get_org_data(self, collection='api_test_data')
         else:
-            return await get_org_data(self, cls_name=ApiTestData, pro_id=pro_id)
-
-            #
-            # if project_name is None:
-            #     return await ApiTestData.objects.order_by('rc_time', direction=DESCENDING).find_all()
-            # else:
-            #     return await ApiTestData.objects.filter(project_name=project_name).order_by('rc_time',
-            #                                                                                 direction=DESCENDING).find_all()
+            return await get_org_data(self, collection='api_test_data', pro_id=pro_id)
 
 
 class ListSafetyTestData(MyBaseHandler):
@@ -57,7 +50,7 @@ class ListSafetyTestData(MyBaseHandler):
     @my_async_jsonp
     @my_async_paginator
     async def get(self):
-        return await get_org_data(self, cls_name=SafetyTestReport)
+        return await get_org_data(self, collection='safety_test_report')
 
 
 class ListApiReqDelay(MyBaseHandler):
@@ -71,9 +64,9 @@ class ListApiReqDelay(MyBaseHandler):
         """
         pro_id = self.get_argument('pro_id', None)
         if pro_id is None:
-            return await get_org_data(self, cls_name=ApiReqDelay)
+            return await get_org_data(self, collection='api_req_delay')
         else:
-            return await get_org_data(self, cls_name=ApiReqDelay, pro_id=pro_id)
+            return await get_org_data(self, collection='api_req_delay', pro_id=pro_id)
             # return await ApiReqDelay.objects.filter(project_name=project_name).order_by('rc_time',
             #                                                                             direction=DESCENDING).find_all()
 
@@ -89,7 +82,7 @@ class ListPerformanceTestData(MyBaseHandler):
     @my_async_jsonp
     @my_async_paginator
     async def get(self):
-        return await get_org_data(self, cls_name=PerformReport)
+        return await get_org_data(self, collection='perform_report')
 
 
 class ListUnitTestData(MyBaseHandler):
@@ -133,174 +126,10 @@ class DeleteTestData(MyBaseHandler):
             return ConstData.msg_forbidden
 
         pro_org_id = testdata_organization
-        if pro_org_id != user_org.get_id():
+        if pro_org_id != user_org:
             return ConstData.msg_forbidden
 
         await mycol.update({"_id": ObjectId(str(id))}, {"$set": {"is_del": True}})
-
-        return ConstData.msg_succeed
-
-
-class CreateSafetyTestReport(MyBaseHandler):
-    """
-    保存安全测试数据
-    """
-
-    @app_token_required()
-    @my_async_jsonp
-    async def get(self):
-        project_id = self.get_argument('project_id', None)
-        total_cnts = self.get_argument('total_cnts', None)
-        success_cnts = self.get_argument('success_cnts', None)
-        time_cycle = self.get_argument('time_cycle', None)
-        # project_name = self.get_argument('project_name', None)
-        hack_tool = self.get_argument('hack_tool', None)
-        notes = self.get_argument('notes', None)
-
-        if list_have_none_mem(*[project_id, total_cnts, success_cnts, time_cycle]) is True:
-            return ConstData.msg_args_wrong
-
-        # todo  判定项目从属的问题，后面要做成专门的公共函数
-        app_org = await self.get_org_by_app()
-        """:type:Organization"""
-        project = await Project.objects.get(id=ObjectId(project_id))
-        """:type:Project"""
-        if project is None or app_org is None:
-            return ConstData.msg_none
-        if app_org.get_id() != project.organization.get_id():
-            return ConstData.msg_forbidden
-
-        safety_report = SafetyTestReport()
-        safety_report.hack_tool = hack_tool
-        safety_report.total_cnts = int(total_cnts)
-        safety_report.success_cnts = int(success_cnts)
-        safety_report.success_rate = int(success_cnts) / int(total_cnts)
-        safety_report.time_cycle = float(time_cycle)
-        safety_report.crack_rate = float(time_cycle) / int(success_cnts)
-
-        safety_report.mark = notes  # 加上备注
-        safety_report.set_default_rc_tag()
-        await safety_report.set_project_tag(project)
-        await safety_report.save()
-
-        return ConstData.msg_succeed
-
-
-class CreateApiReqDelay(MyBaseHandler):
-    @app_token_required()
-    @my_async_jsonp
-    async def post(self):
-        """创建api访问的时间接口
-        """
-        pro_id = self.get_argument('pro_id', None)
-        domain = self.get_argument('domain', None)
-        path = self.get_argument('path', None)
-        delay = self.get_argument('delay', None)
-        http_status = self.get_argument('http_status', None)
-
-        if list_have_none_mem(*[domain, path, delay, pro_id, http_status]):
-            return ConstData.msg_args_wrong
-
-        project = await Project.objects.get(id=ObjectId(pro_id))
-        """:type:Project"""
-        if project is None:
-            return ConstData.msg_forbidden
-
-        api_req_delay = ApiReqDelay()
-        api_req_delay.project = project
-        api_req_delay.project_name = project.project_name
-        api_req_delay.domain = domain
-        api_req_delay.delay = delay
-        api_req_delay.path = path
-        api_req_delay.http_status = http_status
-        api_req_delay.organization = await self.get_org_by_app()
-        api_req_delay.set_default_rc_tag()
-
-        await api_req_delay.save()
-
-        return ConstData.msg_succeed
-
-
-class CreatePenetrationReport(MyBaseHandler):
-    """
-    渗透测试数据
-    """
-
-    @app_token_required()
-    @my_async_jsonp
-    async def post(self):
-        start_time = self.get_argument('start_time', None)
-        use_time = self.get_argument('use_time', None)
-        note = self.get_argument('note', None)
-        pro_id = self.get_argument('pro_id', None)
-        if list_have_none_mem(*[start_time, use_time]) is True:
-            return ConstData.msg_args_wrong
-
-        project = await Project.objects.get(id=ObjectId(pro_id))
-        """:type:Project"""
-
-        app_org = await self.get_org_by_app()
-        """:type:Organization"""
-
-        if (project is None) or (project.organization is None):
-            return ConstData.msg_forbidden
-
-        # 权限鉴定,不允许越权访问别人的组织
-        if project.organization.get_id() != app_org.get_id():
-            return ConstData.msg_forbidden
-
-        penetration_report = PenetrationTestData()
-        penetration_report.start_time = start_time
-        penetration_report.use_time = use_time
-        penetration_report.note = note
-        penetration_report.project = project
-        penetration_report.project_name = project.project_name
-        penetration_report.organization = project.organization
-        penetration_report.set_default_rc_tag()
-
-        result = await penetration_report.save()
-
-        res_str = get_std_json_response(code=200, data=jsontool.dumps(result.to_dict()))
-        return res_str
-
-
-class CreatePenetrationReportNote(MyBaseHandler):
-    """
-    渗透测试数据详情
-    """
-
-    @app_token_required()
-    @my_async_jsonp
-    async def post(self):
-        penetration_report = PenetrationTestDataNote()
-        penetration_report.penetration_id = self.get_argument('penetration_id', None)
-        penetration_report.ip = self.get_argument('ip', None)
-        penetration_report.details = self.get_argument('details', None)
-        # penetration_report.MongoEmptyPassword = self.get_argument('MongoEmptyPassword', None)
-        # penetration_report.RedisEmptyPassword = self.get_argument('RedisEmptyPassword', None)
-        # penetration_report.SSHRootEmptyPassword = self.get_argument('SSHRootEmptyPassword', None)
-        penetration_report.set_default_rc_tag()
-        penetration_report.organization = await self.get_org_by_app()
-        await penetration_report.save()
-
-        return ConstData.msg_succeed
-
-
-class CreateProxyipReport(MyBaseHandler):
-    """
-    代理测试数据
-    """
-
-    @app_token_required()
-    @my_async_jsonp
-    async def post(self):
-        proxyip_report = ProxyipTestData()
-        proxyip_report.remoteip = self.get_argument('remoteip', None)
-        proxyip_report.originalip = self.get_argument('originalip', None)
-        proxyip_report.proxyip = self.get_argument('proxyip', None)
-        proxyip_report.set_default_rc_tag()
-        proxyip_report.organization = await self.get_org_by_app()
-        await proxyip_report.save()
 
         return ConstData.msg_succeed
 
@@ -341,67 +170,32 @@ class CreateUnitTestData(MyAppBaseHandler):
             pro_version = '0.0.0.0.0'
             req_dict['pro_version'] = pro_version
 
-        project = await Project.objects.get(id=ObjectId(pro_id))
+        db = self.get_async_mongo()
+        proj_col = db.test_project
+        test_data_col = db.unit_test_data
+
+        # project = await Project.objects.get(id=ObjectId(pro_id))
+        project = await proj_col.find_one({'_id': ObjectId(pro_id)})
         """:type:Project"""
 
         app_org = await self.get_organization()
         """:type:Organization"""
 
-        if (project is None) or (project.organization is None):
+        # if (project is None) or (project.organization is None):
+        if project is None:
             return ConstData.msg_forbidden
 
         # 权限鉴定,不允许越权访问别人的组织的项目
-        pro_org_id = project.organization.get_id()
-        if pro_org_id != app_org.get_id():
+        pro_org_id = project['organization']
+        if pro_org_id != app_org:
             return ConstData.msg_forbidden
 
         # todo 后续的一些更细节的字段内在的约束检查
 
-        mongo_coon = self.get_async_mongo()
         req_dict = wrap_project_tag(req_dict, project)  # 加上项目标签
         req_dict = wrap_default_rc_tag(req_dict)  # 加上默认的标签
         req_dict = wrap_org_tag(req_dict, str(pro_org_id))  # 加上组织的标签
-        insert_res = await mongo_coon.unit_test_data.insert(req_dict)
-
-        return ConstData.msg_succeed
-
-
-class CreatePerformReport(MyBaseHandler):
-    """
-    保存性能测试的数据指标
-    """
-
-    @token_required()
-    @my_async_jsonp
-    async def post(self):
-        # TODO 读取动态的内容
-        perform_report = PerformReport()
-        # data = json_decode(self.request.body)
-
-        # perform_report.server_soft_ware='squid/3.4.2'
-        perform_report.server_host_name = self.get_argument('doc_path', None)
-        perform_report.server_port = '80'
-        # perform_report.doc_path = '/'
-        # perform_report.doc_length = 131
-        perform_report.con_level = self.get_argument('con_level', None)  # 并发量
-        # perform_report.test_time_taken = 52.732 # 消耗时间 seconds
-        # perform_report.complete_req = data['con_level'] * 20  # 完成请求数
-        perform_report.failed_req = self.get_argument('failed_req', None)  # 失败请求数
-        # perform_report.non_2xx_res = IntField()#非2xx请求数
-        # perform_report.total_trans = 62505778#总传输数据量bytes
-        # perform_report.html_trans = 62472673#总html传输数据量bytes
-
-
-        perform_report.req_per_sec = self.get_argument('req_per_sec', None)  # 每秒请求量
-        perform_report.time_per_req = self.get_argument('time_per_req', None)  # 平均http请求响应时间
-        perform_report.time_per_req_across = self.get_argument('time_per_req_across', None)  # 平均事务响应时间
-        # perform_report.trans_rate = 1157.56#每秒传输数据量
-        # perform_report.time = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-        perform_report.set_default_rc_tag()
-
-        perform_report.organization = await self.get_organization()
-
-        perform_report.save()
+        insert_res = await test_data_col.insert(req_dict)
 
         return ConstData.msg_succeed
 
@@ -428,98 +222,12 @@ class GetOneUnitTestData(MyBaseHandler):
         user_org = await self.get_organization()
         """:type:Organization"""
 
-        msg_details = mycol.find({
-            "organization": user_org.get_id(),
-            "_id": ObjectId(str(data_id))
-        }).sort([('rc_time', DESCENDING)])  # 升序排列
+        msg_details = await mycol.find_one({
+            "organization": ObjectId(user_org),
+            "_id": ObjectId(data_id)
+        })
 
-        msg_content_list = await msg_details.to_list(1)
-
-        msg_content = msg_content_list[0]
-
-        return get_std_json_response(data=jsontool.dumps(msg_content, ensure_ascii=False))
-
-
-class ReadProxyipReport(MyBaseHandler):
-    """
-    读取代理测试数据
-    """
-
-    @token_required()
-    @my_async_jsonp
-    @my_async_paginator
-    async def get(self):
-        pro_id = self.get_argument('pro_id', None)
-        if pro_id is None:
-            return await get_org_data(self, cls_name=ProxyipTestData)
-        else:
-            return await get_org_data(self, cls_name=ProxyipTestData, pro_id=pro_id)
-
-
-class ReadPenetrationReport(MyBaseHandler):
-    """
-    读取渗透测试数据
-    """
-
-    @token_required()
-    @my_async_jsonp
-    @my_async_paginator
-    async def get(self):
-        pro_id = self.get_argument('pro_id', None)
-        if pro_id is None:
-            return await get_org_data(self, cls_name=PenetrationTestData)
-        else:
-            return await get_org_data(self, cls_name=PenetrationTestData, pro_id=pro_id)
-
-
-class ReadPenetrationReportNote(MyBaseHandler):
-    """
-    读取渗透测试数据详情
-    """
-
-    @token_required()
-    @my_async_jsonp
-    # @my_async_paginator
-    async def get(self):
-        penetration_id = self.get_argument('penetration_id', None)
-        res = await PenetrationTestDataNote.objects.filter(penetration_id=penetration_id).find_all()
-        result = []
-        for item in res:
-            result.append(item.to_dict())
-        data = get_std_json_response(code=200, data=jsontool.dumps(result))
-        return data
-
-
-class ReadDetailTestData(MyBaseHandler):
-    """
-
-    """
-
-    @token_required()
-    @my_async_jsonp
-    async def get(self):
-        id = self.get_argument('id', None)
-        callback = self.get_argument('callback', None)
-        res = await ApiTestDataNote.objects.filter(apitestdata_id=id).find_all()
-        result = []
-        for item in res:
-            result.append(item.to_dict())
-        data = get_std_json_response(code=200, data=jsontool.dumps(result))
-        return data
-
-
-class ReadTestDataTag(MyBaseHandler):
-    """
-    --因为性能问题,取消使用 2016-09-30
-    """
-
-    @token_required()
-    @my_async_jsonp
-    async def get(self):
-        id = self.get_argument('id', None)
-        res = await ApiTestData.objects.get(id=ObjectId(id))
-        return get_std_json_response(code=200, data=jsontool.dumps(res.to_dict()))
-
+        return get_std_json_response(data=jsontool.dumps(msg_details, ensure_ascii=False))
 
 class ApiAuth(MyAppBaseHandler):
     """
@@ -534,12 +242,15 @@ class ApiAuth(MyAppBaseHandler):
         if list_have_none_mem(*[appid, appkey]):
             return ConstData.msg_args_wrong
 
-        test_data_app = await TestDataApp.objects.get(app_id=str(appid))  # 后面要为app_id建立index
+        db = self.get_async_mongo()
+        app_col = db.test_data_app
+
+        test_data_app = await app_col.find_one({'app_id': str(appid)})  # 后面要为app_id建立index
         if test_data_app is None:
             return ConstData.msg_none
 
         # 可以和数据库连接形成动态的验证
-        if str(appkey) == str(test_data_app.app_key):
+        if str(appkey) == str(test_data_app['app_key']):
             # todo:后面对于自动化的工具应用,要隔离部署,单独做一套体系,先默认使用某个人的信息了
 
             app_session = await self.create_app_session(app_id=appid, client_type=ClientTypeDict.api)
@@ -549,7 +260,7 @@ class ApiAuth(MyAppBaseHandler):
 
             # todo 后面要做高频的api接口的统计系统
 
-            res_data = jsontool.dumps(app_session.to_dict())
+            res_data = jsontool.dumps(app_session)
             dlog.debug(res_data)
             return get_std_json_response(data=res_data)
         else:
@@ -568,49 +279,344 @@ class ApiAuthout(MyAppBaseHandler):
         return get_std_json_response(code=200, msg='logout', data='')
 
 
-class CreateFeedback(MyBaseHandler):
-    """
-    上传文件
-    """
-
-    @token_required()
-    @my_async_jsonp
-    async def post(self):
-        upload_path = os.path.join(os.path.dirname(__file__), 'files')  # 文件的暂存路径
-        file_metas = self.request.files['uploadfile']  # 提取表单中‘name’为‘file’的文件元数据
-        msg = self.get_argument('msg', None)
-        if list_have_none_mem(*[msg]):
-            return ConstData.msg_args_wrong
-
-        file_list = []
-        for meta in file_metas:
-            filename = meta['filename']
-            # filepath = os.path.join(upload_path, filename)
-            filepath = '/var/static/' + filename
-            with open(filepath, 'wb') as up:  # 有些文件需要已二进制的形式存储，实际中可以更改
-                up.write(meta['body'])
-            file_list.append(filename)
-
-        feedback_msg = FeedbackMsg()
-        feedback_msg.msg = msg
-        feedback_msg.file_path = filepath
-        await feedback_msg.save()
-        return ConstData.msg_succeed
-
-
-class FeedbackList(MyBaseHandler):
-    """
-    查看列表
-    """
-
-    @token_required()
-    @my_async_jsonp
-    @my_async_paginator_list
-    async def get(self):
-        mongo_coon = self.get_async_mongo()
-
-        res = await mongo_coon['feedback_msg'].find({})
-        list = []
-        for i in res:
-            list.append(i.to_list())
-        return list
+# code trash (2018-04-23 yx)
+# class CreatePerformReport(MyBaseHandler):
+#     # TODO: change to motor
+#     """
+#     保存性能测试的数据指标
+#     """
+#
+#     @token_required()
+#     @my_async_jsonp
+#     async def post(self):
+#         # TODO 读取动态的内容
+#         perform_report = PerformReport()
+#         # data = json_decode(self.request.body)
+#
+#         # perform_report.server_soft_ware='squid/3.4.2'
+#         perform_report.server_host_name = self.get_argument('doc_path', None)
+#         perform_report.server_port = '80'
+#         # perform_report.doc_path = '/'
+#         # perform_report.doc_length = 131
+#         perform_report.con_level = self.get_argument('con_level', None)  # 并发量
+#         # perform_report.test_time_taken = 52.732 # 消耗时间 seconds
+#         # perform_report.complete_req = data['con_level'] * 20  # 完成请求数
+#         perform_report.failed_req = self.get_argument('failed_req', None)  # 失败请求数
+#         # perform_report.non_2xx_res = IntField()#非2xx请求数
+#         # perform_report.total_trans = 62505778#总传输数据量bytes
+#         # perform_report.html_trans = 62472673#总html传输数据量bytes
+#
+#
+#         perform_report.req_per_sec = self.get_argument('req_per_sec', None)  # 每秒请求量
+#         perform_report.time_per_req = self.get_argument('time_per_req', None)  # 平均http请求响应时间
+#         perform_report.time_per_req_across = self.get_argument('time_per_req_across', None)  # 平均事务响应时间
+#         # perform_report.trans_rate = 1157.56#每秒传输数据量
+#         # perform_report.time = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+#         perform_report.set_default_rc_tag()
+#
+#         perform_report.organization = await self.get_organization()
+#
+#         perform_report.save()
+#
+#         return ConstData.msg_succeed
+#
+#
+# class CreateSafetyTestReport(MyBaseHandler):
+#     # TODO: change to motor
+#     """
+#     保存安全测试数据
+#     """
+#
+#     @app_token_required()
+#     @my_async_jsonp
+#     async def get(self):
+#         project_id = self.get_argument('project_id', None)
+#         total_cnts = self.get_argument('total_cnts', None)
+#         success_cnts = self.get_argument('success_cnts', None)
+#         time_cycle = self.get_argument('time_cycle', None)
+#         # project_name = self.get_argument('project_name', None)
+#         hack_tool = self.get_argument('hack_tool', None)
+#         notes = self.get_argument('notes', None)
+#
+#         if list_have_none_mem(*[project_id, total_cnts, success_cnts, time_cycle]) is True:
+#             return ConstData.msg_args_wrong
+#
+#         # todo  判定项目从属的问题，后面要做成专门的公共函数
+#         app_org = await self.get_org_by_app()
+#         """:type:Organization"""
+#         project = await Project.objects.get(id=ObjectId(project_id))
+#         """:type:Project"""
+#         if project is None or app_org is None:
+#             return ConstData.msg_none
+#         if app_org.get_id() != project.organization.get_id():
+#             return ConstData.msg_forbidden
+#
+#         safety_report = SafetyTestReport()
+#         safety_report.hack_tool = hack_tool
+#         safety_report.total_cnts = int(total_cnts)
+#         safety_report.success_cnts = int(success_cnts)
+#         safety_report.success_rate = int(success_cnts) / int(total_cnts)
+#         safety_report.time_cycle = float(time_cycle)
+#         safety_report.crack_rate = float(time_cycle) / int(success_cnts)
+#
+#         safety_report.mark = notes  # 加上备注
+#         safety_report.set_default_rc_tag()
+#         await safety_report.set_project_tag(project)
+#         await safety_report.save()
+#
+#         return ConstData.msg_succeed
+#
+#
+# class CreateApiReqDelay(MyBaseHandler):
+#     # TODO: change to motor
+#     @app_token_required()
+#     @my_async_jsonp
+#     async def post(self):
+#         """创建api访问的时间接口
+#         """
+#         pro_id = self.get_argument('pro_id', None)
+#         domain = self.get_argument('domain', None)
+#         path = self.get_argument('path', None)
+#         delay = self.get_argument('delay', None)
+#         http_status = self.get_argument('http_status', None)
+#
+#         if list_have_none_mem(*[domain, path, delay, pro_id, http_status]):
+#             return ConstData.msg_args_wrong
+#
+#         project = await Project.objects.get(id=ObjectId(pro_id))
+#         """:type:Project"""
+#         if project is None:
+#             return ConstData.msg_forbidden
+#
+#         api_req_delay = ApiReqDelay()
+#         api_req_delay.project = project
+#         api_req_delay.project_name = project.project_name
+#         api_req_delay.domain = domain
+#         api_req_delay.delay = delay
+#         api_req_delay.path = path
+#         api_req_delay.http_status = http_status
+#         api_req_delay.organization = await self.get_org_by_app()
+#         api_req_delay.set_default_rc_tag()
+#
+#         await api_req_delay.save()
+#
+#         return ConstData.msg_succeed
+#
+#
+# class CreatePenetrationReport(MyBaseHandler):
+#     # TODO: change to motor
+#     """
+#     渗透测试数据
+#     """
+#
+#     @app_token_required()
+#     @my_async_jsonp
+#     async def post(self):
+#         start_time = self.get_argument('start_time', None)
+#         use_time = self.get_argument('use_time', None)
+#         note = self.get_argument('note', None)
+#         pro_id = self.get_argument('pro_id', None)
+#         if list_have_none_mem(*[start_time, use_time]) is True:
+#             return ConstData.msg_args_wrong
+#
+#         project = await Project.objects.get(id=ObjectId(pro_id))
+#         """:type:Project"""
+#
+#         app_org = await self.get_org_by_app()
+#         """:type:Organization"""
+#
+#         if (project is None) or (project.organization is None):
+#             return ConstData.msg_forbidden
+#
+#         # 权限鉴定,不允许越权访问别人的组织
+#         if project.organization.get_id() != app_org.get_id():
+#             return ConstData.msg_forbidden
+#
+#         penetration_report = PenetrationTestData()
+#         penetration_report.start_time = start_time
+#         penetration_report.use_time = use_time
+#         penetration_report.note = note
+#         penetration_report.project = project
+#         penetration_report.project_name = project.project_name
+#         penetration_report.organization = project.organization
+#         penetration_report.set_default_rc_tag()
+#
+#         result = await penetration_report.save()
+#
+#         res_str = get_std_json_response(code=200, data=jsontool.dumps(result.to_dict()))
+#         return res_str
+#
+#
+# class CreatePenetrationReportNote(MyBaseHandler):
+#     # TODO: change to motor
+#     """
+#     渗透测试数据详情
+#     """
+#
+#     @app_token_required()
+#     @my_async_jsonp
+#     async def post(self):
+#         penetration_report = PenetrationTestDataNote()
+#         penetration_report.penetration_id = self.get_argument('penetration_id', None)
+#         penetration_report.ip = self.get_argument('ip', None)
+#         penetration_report.details = self.get_argument('details', None)
+#         # penetration_report.MongoEmptyPassword = self.get_argument('MongoEmptyPassword', None)
+#         # penetration_report.RedisEmptyPassword = self.get_argument('RedisEmptyPassword', None)
+#         # penetration_report.SSHRootEmptyPassword = self.get_argument('SSHRootEmptyPassword', None)
+#         penetration_report.set_default_rc_tag()
+#         penetration_report.organization = await self.get_org_by_app()
+#         await penetration_report.save()
+#
+#         return ConstData.msg_succeed
+#
+#
+# class CreateProxyipReport(MyBaseHandler):
+#     # TODO: change to motor
+#     """
+#     代理测试数据
+#     """
+#
+#     @app_token_required()
+#     @my_async_jsonp
+#     async def post(self):
+#         proxyip_report = ProxyipTestData()
+#         proxyip_report.remoteip = self.get_argument('remoteip', None)
+#         proxyip_report.originalip = self.get_argument('originalip', None)
+#         proxyip_report.proxyip = self.get_argument('proxyip', None)
+#         proxyip_report.set_default_rc_tag()
+#         proxyip_report.organization = await self.get_org_by_app()
+#         await proxyip_report.save()
+#
+#         return ConstData.msg_succeed
+#
+#
+# class ReadProxyipReport(MyBaseHandler):
+#     """
+#     读取代理测试数据
+#     """
+#
+#     @token_required()
+#     @my_async_jsonp
+#     @my_async_paginator
+#     async def get(self):
+#         pro_id = self.get_argument('pro_id', None)
+#         if pro_id is None:
+#             return await get_org_data(self, collection='proxyip_test_data')
+#         else:
+#             return await get_org_data(self, collection='proxyip_test_data', pro_id=pro_id)
+#
+#
+# class ReadPenetrationReport(MyBaseHandler):
+#     """
+#     读取渗透测试数据
+#     """
+#
+#     @token_required()
+#     @my_async_jsonp
+#     @my_async_paginator
+#     async def get(self):
+#         pro_id = self.get_argument('pro_id', None)
+#         if pro_id is None:
+#             return await get_org_data(self, collection='penetration_test_data')
+#         else:
+#             return await get_org_data(self, collection='penetration_test_data', pro_id=pro_id)
+#
+#
+# class ReadPenetrationReportNote(MyBaseHandler):
+#     # TODO: change to motor
+#     """
+#     读取渗透测试数据详情
+#     """
+#
+#     @token_required()
+#     @my_async_jsonp
+#     # @my_async_paginator
+#     async def get(self):
+#         penetration_id = self.get_argument('penetration_id', None)
+#         res = await PenetrationTestDataNote.objects.filter(penetration_id=penetration_id).find_all()
+#         result = []
+#         for item in res:
+#             result.append(item.to_dict())
+#         data = get_std_json_response(code=200, data=jsontool.dumps(result))
+#         return data
+#
+#
+# class ReadDetailTestData(MyBaseHandler):
+#     # TODO: change to motor
+#     """
+#
+#     """
+#
+#     @token_required()
+#     @my_async_jsonp
+#     async def get(self):
+#         id = self.get_argument('id', None)
+#         callback = self.get_argument('callback', None)
+#         res = await ApiTestDataNote.objects.filter(apitestdata_id=id).find_all()
+#         result = []
+#         for item in res:
+#             result.append(item.to_dict())
+#         data = get_std_json_response(code=200, data=jsontool.dumps(result))
+#         return data
+#
+#
+# class ReadTestDataTag(MyBaseHandler):
+#     """
+#     --因为性能问题,取消使用 2016-09-30
+#     """
+#
+#     @token_required()
+#     @my_async_jsonp
+#     async def get(self):
+#         id = self.get_argument('id', None)
+#         res = await ApiTestData.objects.get(id=ObjectId(id))
+#         return get_std_json_response(code=200, data=jsontool.dumps(res.to_dict()))
+#
+#
+# class CreateFeedback(MyBaseHandler):
+#     # TODO: change to motor
+#     """
+#     上传文件
+#     """
+#
+#     @token_required()
+#     @my_async_jsonp
+#     async def post(self):
+#         upload_path = os.path.join(os.path.dirname(__file__), 'files')  # 文件的暂存路径
+#         file_metas = self.request.files['uploadfile']  # 提取表单中‘name’为‘file’的文件元数据
+#         msg = self.get_argument('msg', None)
+#         if list_have_none_mem(*[msg]):
+#             return ConstData.msg_args_wrong
+#
+#         file_list = []
+#         for meta in file_metas:
+#             filename = meta['filename']
+#             # filepath = os.path.join(upload_path, filename)
+#             filepath = '/var/static/' + filename
+#             with open(filepath, 'wb') as up:  # 有些文件需要已二进制的形式存储，实际中可以更改
+#                 up.write(meta['body'])
+#             file_list.append(filename)
+#
+#         feedback_msg = FeedbackMsg()
+#         feedback_msg.msg = msg
+#         feedback_msg.file_path = filepath
+#         await feedback_msg.save()
+#         return ConstData.msg_succeed
+#
+#
+# class FeedbackList(MyBaseHandler):
+#     """
+#     查看列表
+#     """
+#
+#     @token_required()
+#     @my_async_jsonp
+#     @my_async_paginator_list
+#     async def get(self):
+#         mongo_coon = self.get_async_mongo()
+#
+#         res = await mongo_coon['feedback_msg'].find({})
+#         list = []
+#         for i in res:
+#             list.append(i.to_list())
+#         return list
