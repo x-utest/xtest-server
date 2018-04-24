@@ -8,7 +8,7 @@ from dtlib.aio.decos import my_async_paginator, my_async_jsonp, my_async_paginat
 from dtlib.dtlog import dlog
 from dtlib.tornado.base_hanlder import MyAppBaseHandler
 from dtlib.tornado.decos import token_required, app_token_required
-from dtlib.tornado.docs import TestDataApp
+# from dtlib.tornado.docs import TestDataApp
 from dtlib.utils import list_have_none_mem
 from dtlib.web.constcls import ConstData
 from dtlib.web.decos import deco_jsonp

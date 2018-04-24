@@ -1,4 +1,5 @@
-import pymongo
+# import pymongo
+import motor
 from xt_base.base_server import MyBaseHandler
 from bson import ObjectId
 from dtlib import jsontool
@@ -42,9 +43,9 @@ class CheckEnv(MyBaseHandler):
             'mongo_port': mongodb_cfg.port
         }
         try:
-            con = pymongo.Connection(host=mongodb_cfg.host, port=mongodb_cfg.port)
+            con = motor.MotorClient(host=mongodb_cfg.host, port=mongodb_cfg.port)
             db = con[mongodb_cfg.db_name]
-            res = db.authenticate(mongodb_cfg.user_name, mongodb_cfg.user_pwd)
+            res = await db.authenticate(mongodb_cfg.user_name, mongodb_cfg.user_pwd)
             if res is True:
                 tbl_out['connect'] = True
                 user_id = "admin"
@@ -162,7 +163,7 @@ class AccountInit(MyBaseHandler):
         user_org_rel_col = db.user_org_rel
 
         new_rel = dict(
-            organization=org,
+            organization=org['_id'],
             user=user['user'],
             is_default=is_default,
             is_current=is_current,
@@ -187,7 +188,7 @@ class AccountInit(MyBaseHandler):
         new_app = dict(
             app_id=get_uuid1_key(),
             app_key=hashlib.md5(get_uuid1_key().encode(encoding='utf-8')).hexdigest(),
-            organization=default_org,
+            organization=default_org['_id'],
             o_name=default_org['name'],
             is_default=True  # 是默认设置的
         )

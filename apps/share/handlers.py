@@ -1,6 +1,6 @@
 import math
 
-import pymongo
+from pymongo import DESCENDING
 from xt_base.base_server import MyBaseHandler
 from bson import ObjectId
 from dtlib import jsontool
@@ -236,7 +236,7 @@ class GetProjectShareData(MyBaseHandler):
                 "pro_id": share_obj['project'],
                 "is_del": False
             }, {"details": 0},
-            sort=[('rc_time', pymongo.DESCENDING)])
+            sort=[('rc_time', DESCENDING)])
 
         page_count = await res.count()
         msg_details = res.skip(page_size * (page_idx - 1)).limit(page_size)  # 进行分页

@@ -15,7 +15,7 @@ from dtlib.web.constcls import ConstData
 from dtlib.web.tools import get_std_json_response
 from pymongo import DESCENDING
 
-from apps.admin.decos import perm_check
+# from apps.admin.decos import perm_check
 from xt_base.base_server import MyBaseHandler
 from xt_base.utils import get_org_data
 from xt_base.utils import user_id_is_legal

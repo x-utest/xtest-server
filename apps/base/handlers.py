@@ -2,7 +2,7 @@ import dtlib
 from dtlib import jsontool
 from dtlib import timetool
 from dtlib.mongo.utils import get_mongodb_version, get_pip_list, get_python_version
-from dtlib.tornado.decos import test_token_required, api_counts
+from dtlib.tornado.decos import test_token_required
 from dtlib.web.decos import deco_jsonp
 from dtlib.web.tools import get_std_json_response
 from tornado.web import RequestHandler

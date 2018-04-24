@@ -9,7 +9,6 @@
 import asyncio
 import logging
 
-import aiomotorengine
 import motor.motor_asyncio
 from tabulate import tabulate
 
@@ -98,12 +97,6 @@ if __name__ == '__main__':
 
     # 设置Mongodb
     # you only need to keep track of the DB instance if you connect to multiple databases.
-    # mongo_conn = aiomotorengine.connect(
-    #     mongodb_cfg.db_name,
-    #     host=mongodb_cfg.host,
-    #     port=mongodb_cfg.port,
-    #     io_loop=io_loop
-    # )
     mongo_conn = motor.motor_asyncio.AsyncIOMotorClient(mongodb_cfg.host,mongodb_cfg.port)
     # mongo_conn.max_pool_size = mongodb_cfg.max_connections  # mongodb连接池最大连接数
     db=mongo_conn.xtest
