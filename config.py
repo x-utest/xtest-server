@@ -40,10 +40,10 @@ except:
 mongodb_cfg = DbSetting(
     alias='default',
     host=mongo_host,
-    port=27027,
+    port=27017,
     db_name='xtest',
     user_name='xtest',
-    user_pwd='xtest@2017',
+    user_pwd='xtest@2018',
     max_connections=10
 )
 
