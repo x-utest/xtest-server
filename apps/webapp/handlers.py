@@ -7,10 +7,10 @@ from dtlib.utils import list_have_none_mem
 from dtlib.web.constcls import ConstData
 from dtlib.web.tools import get_std_json_response
 
-from xt_base.base_server import MyBaseHandler
+from dtlib.tornado.base_hanlder import MyUserBaseHandler
 
 
-class GetOrgTestApps(MyBaseHandler):
+class GetOrgTestApps(MyUserBaseHandler):
     """
     获取某个组织的自动化APP
     """
@@ -45,7 +45,7 @@ class GetOrgTestApps(MyBaseHandler):
             return get_std_json_response(code=200, data=jsontool.dumps(test_app, ensure_ascii=False))
 
 # code trash (2018-04-23 yx)
-# class GetCurrentOrgTestApp(MyBaseHandler):
+# class GetCurrentOrgTestApp(MyUserBaseHandler):
 #     """
 #     获取当前组织的自动化APP
 #     """

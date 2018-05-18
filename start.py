@@ -17,7 +17,7 @@ from config import HTTP_PORT, settings, mongodb_cfg, LOGGING_LEVEL, debug_mode, 
 from dtlib.dtlog import dlog
 from dtlib.tornado.async_server import MyAsyncHttpServer
 from route import urls
-from xt_base.base_server import MyApplication
+from myapplication import MyApplication
 
 
 def output_server_info():

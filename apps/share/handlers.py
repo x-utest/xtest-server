@@ -1,7 +1,7 @@
 import math
 
 from pymongo import DESCENDING
-from xt_base.base_server import MyBaseHandler
+from dtlib.tornado.base_hanlder import MyUserBaseHandler
 from bson import ObjectId
 from dtlib import jsontool
 from dtlib.randtool import generate_uuid_token
@@ -11,7 +11,7 @@ from dtlib.web.constcls import ConstData
 from dtlib.web.decos import deco_jsonp
 from dtlib.web.tools import get_std_json_response
 
-from xt_base.utils import get_org_data_paginator
+from dtlib.tornado.utils import get_org_data_paginator
 
 from dtlib.tornado.utils import set_default_rc_tag
 
@@ -20,7 +20,7 @@ share_page = '/utest-report-share.html?stoken='  # 单独部署的一套前端�
 pro_share_page = '/pro-report-share.html?stoken='  # 单独部署的一套前端内容
 
 
-class GetUtestShareLink(MyBaseHandler):
+class GetUtestShareLink(MyUserBaseHandler):
     """
     获取分享链接 
     """
@@ -92,7 +92,7 @@ class GetUtestShareLink(MyBaseHandler):
         return get_std_json_response(data=jsontool.dumps(res_dict))
 
 
-class GetUtestShareData(MyBaseHandler):
+class GetUtestShareData(MyUserBaseHandler):
     """
     获取分享的单元测试数据接口
     """
@@ -129,7 +129,7 @@ class GetUtestShareData(MyBaseHandler):
         return get_std_json_response(data=jsontool.dumps(msg_content, ensure_ascii=False))
 
 
-class GetProjectShareLink(MyBaseHandler):
+class GetProjectShareLink(MyUserBaseHandler):
     """
     获取项目成长分享链接
     """
@@ -146,6 +146,7 @@ class GetProjectShareLink(MyBaseHandler):
         """
 
         pro_id = self.get_argument('project_id', None)  # 测试报项目的ID
+        tag = self.get_argument('tag', 'default')  # 测试报项目的ID
 
         if list_have_none_mem(*[pro_id]):
             return ConstData.msg_args_wrong
@@ -159,6 +160,10 @@ class GetProjectShareLink(MyBaseHandler):
         share_col = db.share_project_report
 
         project = await proj_col.find_one({'_id': ObjectId(str(pro_id))})
+
+        if tag != 'default' and tag not in project['tags']:
+            return ConstData.msg_args_wrong
+
         pro_org_id = project['organization']
 
         if (project is None) or (pro_org_id is None):
@@ -167,7 +172,19 @@ class GetProjectShareLink(MyBaseHandler):
         if pro_org_id != user_org:
             return ConstData.msg_forbidden
 
-        share_obj = await share_col.find_one({'pro_id': pro_id})
+        #todo: delete default next release
+        condition = {
+            'pro_id': pro_id
+        }
+        if tag == 'default':
+            condition['$or'] = [
+                {'tag': 'default'},
+                {'tag': {'$exists': False}}
+            ]
+        else:
+            condition['tag'] = tag
+
+        share_obj = await share_col.find_one(condition)
 
         if share_obj is None:  # 如果不存在分享Link则创建一组
             stoken = generate_uuid_token()  # 生成一组随机串，分享的时候会看到
@@ -181,7 +198,8 @@ class GetProjectShareLink(MyBaseHandler):
                 owner = project['owner'],
                 owner_name = project['owner_name'],
                 organization = project['organization'],
-                org_name = project['org_name']
+                org_name = project['org_name'],
+                tag=tag
             )
             share_data = set_default_rc_tag(share_data)
             await share_col.insert(share_data)
@@ -197,7 +215,7 @@ class GetProjectShareLink(MyBaseHandler):
         return get_std_json_response(data=jsontool.dumps(res_dict))
 
 
-class GetProjectShareData(MyBaseHandler):
+class GetProjectShareData(MyUserBaseHandler):
     """
     获取分享的单元测试数据接口
     """
@@ -222,20 +240,29 @@ class GetProjectShareData(MyBaseHandler):
         if share_obj is None:
             return ConstData.msg_forbidden
 
-        # todo 把完整的Unittest的报告内容获取出来并返回
-
         # 做一个阅读访问次数的计数
-        cnt = share_obj['cnt']
-        if cnt is None:
-            cnt = 0
-        cnt += 1
-        await share_col.update({'stoken': stoken}, {'$set':{'cnt': cnt}})
+        await share_col.update({'stoken': stoken}, {'$inc':{'cnt': 1}})
+
+        condition = {
+            "pro_id": share_obj['project'],
+            "is_del": False
+        }
+        #todo: delete default next release
+        if 'tag' in share_obj.keys():
+            tag = share_obj['tag']
+            if tag != 'default':
+                condition['tag'] = tag
+            else:
+                condition['$or'] = [
+                    {'tag': tag}, {'tag': {'$exists': False}}
+                ]
+        else:
+            condition['$or'] = [
+                {'tag': 'default'}, {'tag': {'$exists': False}}
+            ]
 
         res = utest_col.find(
-            {
-                "pro_id": share_obj['project'],
-                "is_del": False
-            }, {"details": 0},
+            condition, {"details": 0},
             sort=[('rc_time', DESCENDING)])
 
         page_count = await res.count()
@@ -255,7 +282,7 @@ class GetProjectShareData(MyBaseHandler):
         return get_std_json_response(data=jsontool.dumps(page_res, ensure_ascii=False))
 
 
-class MyUtestShare(MyBaseHandler):
+class MyUtestShare(MyUserBaseHandler):
     @token_required()
     @deco_jsonp()
     async def get(self):
@@ -266,7 +293,7 @@ class MyUtestShare(MyBaseHandler):
         return await get_org_data_paginator(self, col_name='share_test_report')
 
 
-class MyProjectShare(MyBaseHandler):
+class MyProjectShare(MyUserBaseHandler):
     @token_required()
     @deco_jsonp()
     async def get(self):
@@ -277,7 +304,7 @@ class MyProjectShare(MyBaseHandler):
         return await get_org_data_paginator(self, col_name='share_project_report')
 
 
-class UpdateUtestShare(MyBaseHandler):
+class UpdateUtestShare(MyUserBaseHandler):
     @token_required()
     @deco_jsonp()
     async def post(self):
@@ -306,7 +333,7 @@ class UpdateUtestShare(MyBaseHandler):
         return ConstData.msg_succeed
 
 
-class DeleteUtestShare(MyBaseHandler):
+class DeleteUtestShare(MyUserBaseHandler):
     @token_required()
     @deco_jsonp()
     async def get(self):
@@ -333,7 +360,7 @@ class DeleteUtestShare(MyBaseHandler):
         return ConstData.msg_succeed
 
 
-class UpdateProjectShare(MyBaseHandler):
+class UpdateProjectShare(MyUserBaseHandler):
     @token_required()
     @deco_jsonp()
     async def post(self):
@@ -361,7 +388,7 @@ class UpdateProjectShare(MyBaseHandler):
         return ConstData.msg_succeed
 
 
-class DeleteProjectShare(MyBaseHandler):
+class DeleteProjectShare(MyUserBaseHandler):
     @token_required()
     @deco_jsonp()
     async def get(self):

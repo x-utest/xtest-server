@@ -1,6 +1,6 @@
 import os
 
-from xt_base.base_server import MyBaseHandler
+from dtlib.tornado.base_hanlder import MyUserBaseHandler
 from bson import ObjectId
 from dtlib import jsontool
 from dtlib.aio.base_mongo import wrap_default_rc_tag
@@ -14,16 +14,15 @@ from dtlib.web.constcls import ConstData
 from dtlib.web.decos import deco_jsonp
 from dtlib.web.tools import get_std_json_response
 from dtlib.web.valuedict import ClientTypeDict
-from pymongo import DESCENDING
 
 # from xt_base.document.testdata_docs import ApiTestData, ApiTestDataNote, PerformReport, SafetyTestReport, ApiReqDelay, \
 #     PenetrationTestData, PenetrationTestDataNote, ProxyipTestData, FeedbackMsg
 # from xt_base.document.base_docs import Project
-from xt_base.utils import get_org_data
-from xt_base.utils import wrap_org_tag, wrap_project_tag, get_org_data_paginator
+from dtlib.tornado.utils import get_org_data
+from dtlib.tornado.utils import wrap_org_tag, wrap_project_tag, get_org_data_paginator
 
 
-class ListApiTestData(MyBaseHandler):
+class ListApiTestData(MyUserBaseHandler):
     """
     前段页面显示出数据
     如果没有任何参数，则默认返回首页的n条数据
@@ -42,7 +41,7 @@ class ListApiTestData(MyBaseHandler):
             return await get_org_data(self, collection='api_test_data', pro_id=pro_id)
 
 
-class ListSafetyTestData(MyBaseHandler):
+class ListSafetyTestData(MyUserBaseHandler):
     """
     """
 
@@ -53,7 +52,7 @@ class ListSafetyTestData(MyBaseHandler):
         return await get_org_data(self, collection='safety_test_report')
 
 
-class ListApiReqDelay(MyBaseHandler):
+class ListApiReqDelay(MyUserBaseHandler):
     @token_required()
     @my_async_jsonp
     @my_async_paginator
@@ -73,7 +72,7 @@ class ListApiReqDelay(MyBaseHandler):
             # return ApiReqDelay.objects.order_by('rc_time', direction=DESCENDING).find_all()
 
 
-class ListPerformanceTestData(MyBaseHandler):
+class ListPerformanceTestData(MyUserBaseHandler):
     """
     废弃掉的功能
     """
@@ -85,7 +84,7 @@ class ListPerformanceTestData(MyBaseHandler):
         return await get_org_data(self, collection='perform_report')
 
 
-class ListUnitTestData(MyBaseHandler):
+class ListUnitTestData(MyUserBaseHandler):
     """
     带分页的内容，不使用ORM了，这样返回会快速很多
     """
@@ -102,7 +101,7 @@ class ListUnitTestData(MyBaseHandler):
         return await get_org_data_paginator(self, col_name='unit_test_data', pro_id=pro_id, hide_fields={'details': 0})
 
 
-class DeleteTestData(MyBaseHandler):
+class DeleteTestData(MyUserBaseHandler):
     """
     删除testdata（实际是将is_del设置为true）
     """
@@ -118,6 +117,7 @@ class DeleteTestData(MyBaseHandler):
         # project_obj = await .objects.get(id=ObjectId(str(id)))
         mongo_coon = self.get_async_mongo()
         mycol = mongo_coon['unit_test_data']
+        pro_col = mongo_coon['test_project']
         testdata = await mycol.find_one({'_id': ObjectId(str(id))})
         testdata_organization = testdata['organization']
         user_org = await self.get_organization()
@@ -131,6 +131,16 @@ class DeleteTestData(MyBaseHandler):
 
         await mycol.update({"_id": ObjectId(str(id))}, {"$set": {"is_del": True}})
 
+        if 'tag' in testdata.keys():
+            pro_id = testdata['pro_id']
+            tag = testdata['tag']
+            # todo: count records of this tag, if < 1, delete tag in project
+            tags = await mycol.find({"pro_id": ObjectId(pro_id), 'is_del': False, 'tag': tag}, {'tag': 1}).count()
+            if tags < 1:
+                project = await pro_col.find_one({"_id": ObjectId(pro_id)})
+                proj_tags = project['tags']
+                proj_tags.remove(tag)
+                await pro_col.update({"_id": ObjectId(pro_id)}, {"$set": {"tags": proj_tags}})
         return ConstData.msg_succeed
 
 
@@ -158,6 +168,7 @@ class CreateUnitTestData(MyAppBaseHandler):
         run_time = req_dict.get('run_time', None)
         total = req_dict.get('total', None)
         was_successful = req_dict.get('was_successful', None)
+        tag = req_dict.get('tag', 'default')
 
         if list_have_none_mem(
                 *[pro_id, failures, errors,
@@ -196,11 +207,18 @@ class CreateUnitTestData(MyAppBaseHandler):
         req_dict = wrap_default_rc_tag(req_dict)  # 加上默认的标签
         req_dict = wrap_org_tag(req_dict, str(pro_org_id))  # 加上组织的标签
         insert_res = await test_data_col.insert(req_dict)
-
+        if 'tags' in project.keys():
+            pro_tags = project['tags']
+            if tag in pro_tags:
+                return ConstData.msg_succeed
+        else:
+            pro_tags = []
+        pro_tags.append(tag)
+        await proj_col.update({'_id': ObjectId(pro_id)}, {'$set': {'tags': pro_tags}})
         return ConstData.msg_succeed
 
 
-class GetOneUnitTestData(MyBaseHandler):
+class GetOneUnitTestData(MyUserBaseHandler):
     """
     获取一条记录
     """
@@ -280,7 +298,7 @@ class ApiAuthout(MyAppBaseHandler):
 
 
 # code trash (2018-04-23 yx)
-# class CreatePerformReport(MyBaseHandler):
+# class CreatePerformReport(MyUserBaseHandler):
 #     # TODO: change to motor
 #     """
 #     保存性能测试的数据指标
@@ -321,7 +339,7 @@ class ApiAuthout(MyAppBaseHandler):
 #         return ConstData.msg_succeed
 #
 #
-# class CreateSafetyTestReport(MyBaseHandler):
+# class CreateSafetyTestReport(MyUserBaseHandler):
 #     # TODO: change to motor
 #     """
 #     保存安全测试数据
@@ -367,7 +385,7 @@ class ApiAuthout(MyAppBaseHandler):
 #         return ConstData.msg_succeed
 #
 #
-# class CreateApiReqDelay(MyBaseHandler):
+# class CreateApiReqDelay(MyUserBaseHandler):
 #     # TODO: change to motor
 #     @app_token_required()
 #     @my_async_jsonp
@@ -403,7 +421,7 @@ class ApiAuthout(MyAppBaseHandler):
 #         return ConstData.msg_succeed
 #
 #
-# class CreatePenetrationReport(MyBaseHandler):
+# class CreatePenetrationReport(MyUserBaseHandler):
 #     # TODO: change to motor
 #     """
 #     渗透测试数据
@@ -447,7 +465,7 @@ class ApiAuthout(MyAppBaseHandler):
 #         return res_str
 #
 #
-# class CreatePenetrationReportNote(MyBaseHandler):
+# class CreatePenetrationReportNote(MyUserBaseHandler):
 #     # TODO: change to motor
 #     """
 #     渗透测试数据详情
@@ -470,7 +488,7 @@ class ApiAuthout(MyAppBaseHandler):
 #         return ConstData.msg_succeed
 #
 #
-# class CreateProxyipReport(MyBaseHandler):
+# class CreateProxyipReport(MyUserBaseHandler):
 #     # TODO: change to motor
 #     """
 #     代理测试数据
@@ -490,7 +508,7 @@ class ApiAuthout(MyAppBaseHandler):
 #         return ConstData.msg_succeed
 #
 #
-# class ReadProxyipReport(MyBaseHandler):
+# class ReadProxyipReport(MyUserBaseHandler):
 #     """
 #     读取代理测试数据
 #     """
@@ -506,7 +524,7 @@ class ApiAuthout(MyAppBaseHandler):
 #             return await get_org_data(self, collection='proxyip_test_data', pro_id=pro_id)
 #
 #
-# class ReadPenetrationReport(MyBaseHandler):
+# class ReadPenetrationReport(MyUserBaseHandler):
 #     """
 #     读取渗透测试数据
 #     """
@@ -522,7 +540,7 @@ class ApiAuthout(MyAppBaseHandler):
 #             return await get_org_data(self, collection='penetration_test_data', pro_id=pro_id)
 #
 #
-# class ReadPenetrationReportNote(MyBaseHandler):
+# class ReadPenetrationReportNote(MyUserBaseHandler):
 #     # TODO: change to motor
 #     """
 #     读取渗透测试数据详情
@@ -541,7 +559,7 @@ class ApiAuthout(MyAppBaseHandler):
 #         return data
 #
 #
-# class ReadDetailTestData(MyBaseHandler):
+# class ReadDetailTestData(MyUserBaseHandler):
 #     # TODO: change to motor
 #     """
 #
@@ -560,7 +578,7 @@ class ApiAuthout(MyAppBaseHandler):
 #         return data
 #
 #
-# class ReadTestDataTag(MyBaseHandler):
+# class ReadTestDataTag(MyUserBaseHandler):
 #     """
 #     --因为性能问题,取消使用 2016-09-30
 #     """
@@ -573,7 +591,7 @@ class ApiAuthout(MyAppBaseHandler):
 #         return get_std_json_response(code=200, data=jsontool.dumps(res.to_dict()))
 #
 #
-# class CreateFeedback(MyBaseHandler):
+# class CreateFeedback(MyUserBaseHandler):
 #     # TODO: change to motor
 #     """
 #     上传文件
@@ -604,7 +622,7 @@ class ApiAuthout(MyAppBaseHandler):
 #         return ConstData.msg_succeed
 #
 #
-# class FeedbackList(MyBaseHandler):
+# class FeedbackList(MyUserBaseHandler):
 #     """
 #     查看列表
 #     """

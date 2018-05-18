@@ -1,11 +1,12 @@
-from aiomotorengine import StringField, IntField, BooleanField, FloatField, DateTimeField, ReferenceField, ListField
+# from aiomotorengine import StringField, IntField, BooleanField, FloatField, DateTimeField, ReferenceField, ListField
+#
+# from xt_base.document.source_docs import InfoAsset
+# from xt_base.document.base_docs import Project
+# from dtlib.aio.base_mongo import MyDocument
+# from dtlib.tornado.account_docs import Organization
+# from dtlib.tornado.base_docs import OrgDataBaseDocument
 
-from xt_base.document.source_docs import InfoAsset
-from xt_base.document.base_docs import Project
-from dtlib.aio.base_mongo import MyDocument
-from dtlib.tornado.account_docs import Organization
-from dtlib.tornado.base_docs import OrgDataBaseDocument
-
+# TODO: 后面有需要重写相关功能
 
 class ProjectDataDocument(OrgDataBaseDocument, MyDocument):
     """

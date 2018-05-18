@@ -2,13 +2,13 @@ import dtlib
 from dtlib import jsontool
 from dtlib import timetool
 from dtlib.mongo.utils import get_mongodb_version, get_pip_list, get_python_version
-from dtlib.tornado.decos import test_token_required
+from dtlib.tornado.decos import test_token_required, api_counts
 from dtlib.web.decos import deco_jsonp
 from dtlib.web.tools import get_std_json_response
 from tornado.web import RequestHandler
 
 from config import app_version, test_token
-from xt_base.base_server import MyBaseHandler
+from dtlib.tornado.base_hanlder import MyUserBaseHandler
 
 
 class MainHandler(RequestHandler):
@@ -20,12 +20,12 @@ class MainHandler(RequestHandler):
         self.write('This the Home Page')
 
 
-class AppInfo(MyBaseHandler):
+class AppInfo(MyUserBaseHandler):
     """
     获取本web应用的基本信息
     """
 
-    # @api_counts()
+    @api_counts()
     @deco_jsonp(is_async=False)
     def get(self):
         print('run app-info:', app_version)
@@ -39,7 +39,7 @@ class AppInfo(MyBaseHandler):
         return get_std_json_response(data=jsontool.dumps(res, ensure_ascii=False))
 
 
-class PrivateAppInfo(MyBaseHandler):
+class PrivateAppInfo(MyUserBaseHandler):
     """
     获取本web应用的基本信息,这些需要有管理员的test_key才能访问
     """
@@ -67,7 +67,7 @@ class PrivateAppInfo(MyBaseHandler):
         return get_std_json_response(data=jsontool.dumps(res, ensure_ascii=False))
 
 
-class GetClientInfo(MyBaseHandler):
+class GetClientInfo(MyUserBaseHandler):
     @deco_jsonp(is_async=False)
     def get(self):
         """
@@ -88,7 +88,7 @@ class GetClientInfo(MyBaseHandler):
         return get_std_json_response(data=jsontool.dumps(res_dict))
 
 
-class CreateServerAsset(MyBaseHandler):
+class CreateServerAsset(MyUserBaseHandler):
     """
     创建服务器资产
     """

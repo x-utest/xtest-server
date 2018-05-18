@@ -1,18 +1,19 @@
 """
 本模块的所有内容都只针对于认证模块的app,
 """
-from aiomotorengine import DateTimeField
-from aiomotorengine import FloatField
-from aiomotorengine import IntField
-from aiomotorengine import ReferenceField
-from aiomotorengine import StringField
+# from aiomotorengine import DateTimeField
+# from aiomotorengine import FloatField
+# from aiomotorengine import IntField
+# from aiomotorengine import ReferenceField
+# from aiomotorengine import StringField
+#
+# from xt_base.document.auth2_docs import ProductResource
+# from xt_base.document.source_docs import OrgUserDataDocument
+# from dtlib.aio.base_mongo import HttpDocument, ClientTypeDocument, MyDocument
+# from dtlib.tornado.account_docs import User
+# from dtlib.utils import list_have_none_mem
 
-from xt_base.document.auth2_docs import ProductResource
-from xt_base.document.source_docs import OrgUserDataDocument
-from dtlib.aio.base_mongo import HttpDocument, ClientTypeDocument, MyDocument
-from dtlib.tornado.account_docs import User
-from dtlib.utils import list_have_none_mem
-
+# TODO: 后面有需要重写相关功能
 
 class AuthUser(User):
     """

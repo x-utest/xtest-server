@@ -4,7 +4,7 @@ from dtlib.tornado.decos import api_counts
 from dtlib.web.constcls import ConstData
 from dtlib.web.tools import get_jsonp_res
 
-from xt_base.document.auth2_docs import AuthAccessToken
+# from xt_base.document.auth2_docs import AuthAccessToken
 
 
 def async_auth_access_token_required(method):
@@ -18,7 +18,7 @@ def async_auth_access_token_required(method):
     @functools.wraps(method)
     async def wrapper(self, *args, **kwargs):
         """
-        :type self MyBaseHandler
+        :type self MyUserBaseHandler
         """
         callback = self.get_argument('callback', None)
         token = self.get_argument('token', None)

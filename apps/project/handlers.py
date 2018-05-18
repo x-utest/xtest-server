@@ -1,20 +1,21 @@
-from xt_base.base_server import MyBaseHandler
+from dtlib.tornado.base_hanlder import MyUserBaseHandler
 from bson import ObjectId
 from dtlib import jsontool
 from dtlib.aio.decos import my_async_jsonp, my_async_paginator
 from dtlib.tornado.decos import token_required
 from dtlib.utils import list_have_none_mem
-from dtlib.web.constcls import ConstData
+from dtlib.web.constcls import ConstData, ResCode
 from dtlib.web.tools import get_std_json_response
 
-from xt_base.utils import get_org_data
-from xt_base.utils import get_org_data_paginator
+from dtlib.tornado.utils import get_org_data
+from dtlib.tornado.utils import get_org_data_paginator
 
 from dtlib.web.decos import deco_jsonp
 from dtlib.tornado.utils import set_default_rc_tag
+from apps.admin.decos import admin_required
 
 
-class ListProjectsNote(MyBaseHandler):
+class ListProjectsNote(MyUserBaseHandler):
     """
     根据当前组织得到appid，key
     """
@@ -42,7 +43,7 @@ class ListProjectsNote(MyBaseHandler):
         return res_str
 
 
-class CreateTestProject(MyBaseHandler):
+class CreateTestProject(MyUserBaseHandler):
     """
     项目名称
     """
@@ -83,12 +84,12 @@ class CreateTestProject(MyBaseHandler):
         return res_str
 
 
-class UpdateTestProject(MyBaseHandler):
+class UpdateTestProject(MyUserBaseHandler):
     """
     更新project的name
     """
 
-    @token_required()
+    @admin_required()
     @my_async_jsonp
     async def post(self):
         post_json = self.get_post_body_dict()
@@ -124,12 +125,12 @@ class UpdateTestProject(MyBaseHandler):
         return res_str
 
 
-class DeleteTestProject(MyBaseHandler):
+class DeleteTestProject(MyUserBaseHandler):
     """
     删除project（实际是将is_del设置为true）
     """
 
-    @token_required()
+    @admin_required()
     @my_async_jsonp
     async def get(self):
         id = self.get_argument('id', None)
@@ -139,6 +140,7 @@ class DeleteTestProject(MyBaseHandler):
         # todo 做资源归属和权限的判断
         db = self.get_async_mongo()
         proj_col = db.test_project
+        test_data_col = db.unit_test_data
         project_obj = await proj_col.find_one({'_id': ObjectId(str(id))})
         user_org = await self.get_organization()
 
@@ -149,11 +151,13 @@ class DeleteTestProject(MyBaseHandler):
         if pro_org_id != user_org:
             return ConstData.msg_forbidden
 
-        result = await proj_col.update({'_id': ObjectId(str(id))}, {'$set': {'is_del': True}}, upsert=False)
+        await proj_col.update({'_id': ObjectId(str(id))}, {'$set': {'is_del': True}}, upsert=False)
+        # 删除附属于项目的测试结果
+        await test_data_col.update({'pro_id': ObjectId(str(id))}, {'$set': {'is_del': True}}, multi=True)
         return ConstData.msg_succeed
 
 
-class ReadProjectsRecord(MyBaseHandler):
+class ReadProjectsRecord(MyUserBaseHandler):
     """
     根据project—id查找30次的构建情况
     """
@@ -162,13 +166,14 @@ class ReadProjectsRecord(MyBaseHandler):
     @my_async_jsonp
     async def get(self):
         id = self.get_argument('id', None)
+        tag = self.get_argument('tag', 'default')
         if id is None:
             return ConstData.msg_args_wrong
 
         # todo 做资源归属和权限的判断
         db = self.get_async_mongo()
         proj_col = db.test_project
-        project_obj = await proj_col.find_one({'_id': ObjectId(str(id))})
+        project_obj = await proj_col.find_one({'_id': ObjectId(id)})
         user_org = await self.get_organization()
 
         if project_obj is None:
@@ -178,10 +183,11 @@ class ReadProjectsRecord(MyBaseHandler):
         if pro_org_id != user_org:
             return ConstData.msg_forbidden
 
-        return await get_org_data_paginator(self, col_name='unit_test_data', pro_id=id, hide_fields={'details': 0})
+        return await get_org_data_paginator(self, col_name='unit_test_data', pro_id=id, tag=tag,
+                                            hide_fields={'details': 0})
 
 
-class ListProjects(MyBaseHandler):
+class ListProjects(MyUserBaseHandler):
     """
     本组织的所有的项目列出来
     """
@@ -191,3 +197,27 @@ class ListProjects(MyBaseHandler):
     @my_async_paginator
     async def get(self):
         return await get_org_data(self, collection='test_project')
+
+
+class GetProjectTags(MyUserBaseHandler):
+    """
+    获取某个项目的所有tag
+    """
+
+    # @my_async_jsonp
+    @my_async_jsonp
+    async def get(self):
+        pro_id = self.get_argument('pro_id', None)
+        if pro_id is None:
+            return ConstData.msg_args_wrong
+        db = self.get_async_mongo()
+        pro_col = db.test_project
+        tags = await pro_col.find_one({'_id': ObjectId(pro_id)}, {'tags': 1})
+        # test_data_col = db.unit_test_data
+        # tags = await test_data_col.distinct("tag",
+        #                                     {"pro_id": ObjectId(pro_id), 'is_del': False, 'tag': {'$exists': True}})
+        tag_list = list()
+        if 'tags' in tags.keys():
+            tag_list = tags['tags']
+        msg_succeed = '{"code":%s,"msg":"success","data":%s}' % (ResCode.ok, jsontool.dumps(tag_list))  # 操作成功
+        return msg_succeed

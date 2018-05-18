@@ -13,10 +13,11 @@ from dtlib.web.valuedict import ClientTypeDict
 
 from apps.auth2.decos import async_auth_access_token_required
 from config_api import QR_AUTH_DOMAIN, BASE_DOMAIN, AUTH_CALLBACK_DOMAIN
-from xt_base.base_server import MyBaseHandler
-from xt_base.document.auth2_docs import ThirdAuthToken, MobileAuthPcToken, AuthAccessToken, \
-    MobileSafetyData, AuthApp
-from xt_base.document.source_docs import AuthCallbackPage
+from dtlib.tornado.base_hanlder import MyUserBaseHandler
+
+# from xt_base.document.auth2_docs import ThirdAuthToken, MobileAuthPcToken, AuthAccessToken, \
+#     MobileSafetyData, AuthApp
+# from xt_base.document.source_docs import AuthCallbackPage
 
 try:
     from xt_wechat.config import my_auth_app
@@ -24,7 +25,10 @@ except:
     print("Wechat module didn't installed!")
 
 
-class GetMapQrCodeToken(MyBaseHandler):
+# TODO: 后面有需要重写相关功能
+
+
+class GetMapQrCodeToken(MyUserBaseHandler):
     """
     PC端将文本内容返回给客户端，由客户端生成二维码
 
@@ -58,7 +62,7 @@ class GetMapQrCodeToken(MyBaseHandler):
         return res_data
 
 
-class AppConfirm(MyBaseHandler):
+class AppConfirm(MyUserBaseHandler):
     """
     手机端扫码后相应的状态提醒。
     如果扫码了，则调出确认的页面，扫码时也改变状态值为410：
@@ -109,7 +113,7 @@ class AppConfirm(MyBaseHandler):
 
 # region 以下就是PC端后续的调用接口
 
-class GetAuthAccessToken(MyBaseHandler):
+class GetAuthAccessToken(MyUserBaseHandler):
     """
     auth2.0里面的获取认证信息，因为二维码信息容易被获取，所以中间再加一个auth_token
     ：需要私钥(影子）。此时是可信的服务器作为通讯双方
@@ -136,7 +140,7 @@ class GetAuthAccessToken(MyBaseHandler):
         return res_data
 
 
-class GetAuthUserInfo(MyBaseHandler):
+class GetAuthUserInfo(MyUserBaseHandler):
     """
     另外的一套独立的token体系，后面会独立出来
     """
@@ -150,7 +154,7 @@ class GetAuthUserInfo(MyBaseHandler):
         await sleep()
 
 
-class UploadMobileSafetyData(MyBaseHandler):
+class UploadMobileSafetyData(MyUserBaseHandler):
     """
     获取手机风控相关数据
     """
@@ -224,7 +228,7 @@ class UploadMobileSafetyData(MyBaseHandler):
         return ConstData.msg_succeed
 
 
-class CreateAuthApp(MyBaseHandler):
+class CreateAuthApp(MyUserBaseHandler):
     """
     建议auth应用
     """
@@ -257,7 +261,7 @@ class CreateAuthApp(MyBaseHandler):
 # endregion
 
 
-class CreateAuthCallbackPage(MyBaseHandler):
+class CreateAuthCallbackPage(MyUserBaseHandler):
     """
     创建page
     """

@@ -13,5 +13,6 @@ url = [
     (r"/%s/xtest-client-config/" % app_path, ListProjectsNote),  # 根据project——id查找app-id
 
     (r"/%s/read-projects-record/" % app_path, ReadProjectsRecord),  # 根据project—id查找30次的构建情况
+    (r"/%s/get-tags/" % app_path, GetProjectTags),  # 根据project—id查找30次的构建情况
 
 ]

@@ -13,12 +13,12 @@ from dtlib.web.tools import get_std_json_response
 from dtlib.utils import list_have_none_mem
 from dtlib.aio.base_mongo import wrap_default_rc_tag
 from dtlib.tornado.decos import token_required
-from xt_base.base_server import MyBaseHandler
+from dtlib.tornado.base_hanlder import MyUserBaseHandler
 
 import json
 
 
-class UpdateContent(MyBaseHandler):
+class UpdateContent(MyUserBaseHandler):
     """
     更新文本内容
     """
@@ -58,7 +58,7 @@ class UpdateContent(MyBaseHandler):
             return msg_succeed
 
 
-class DeleteContent(MyBaseHandler):
+class DeleteContent(MyUserBaseHandler):
     """
     删除文本内容
     """
@@ -80,7 +80,7 @@ class DeleteContent(MyBaseHandler):
         return ConstData.msg_succeed
 
 
-class GetContent(MyBaseHandler):
+class GetContent(MyUserBaseHandler):
     def __init__(self, *args, **kwargs):
         super(GetContent, self).__init__(*args, **kwargs)
 
@@ -132,7 +132,7 @@ class GetContent(MyBaseHandler):
         return get_std_json_response(data=jsontool.dumps(msg_content_list))
 
 
-class UpdateProjectShow(MyBaseHandler):
+class UpdateProjectShow(MyUserBaseHandler):
     """
     更新项目是否展示的状态
     """
@@ -143,14 +143,19 @@ class UpdateProjectShow(MyBaseHandler):
     @deco_jsonp()
     async def post(self, *args, **kwargs):
         post_json = self.get_post_body_dict()
-        tv = post_json.get('tv', None)
+        tv_tags = post_json.get('tv_tags', None)
         pro_id = post_json.get('pro_id', None)
 
-        if list_have_none_mem(*[tv, pro_id]):
+        if list_have_none_mem(*[tv_tags, pro_id]):
             return ConstData.msg_args_wrong
-        if not isinstance(tv, bool):
+        if not isinstance(tv_tags, list):
             return ConstData.msg_args_wrong
         mongo_conn = self.get_async_mongo()
         mycol = mongo_conn['test_project']
-        mycol.update({'_id': ObjectId(pro_id)}, {'$set': {'tv': tv}}, upsert=False)
+        project = await mycol.find_one({'_id': ObjectId(pro_id)}, {'tags': 1})
+        if 'tags' in project:
+            tags = project['tags']
+            if set(tv_tags).issubset(set(tags)) is False:
+                return ConstData.msg_args_wrong
+        await mycol.update({'_id': ObjectId(pro_id)}, {'$set': {'tv_tags': tv_tags}}, upsert=False)
         return ConstData.msg_succeed

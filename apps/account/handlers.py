@@ -1,6 +1,6 @@
 # import pymongo
 import motor
-from xt_base.base_server import MyBaseHandler
+from dtlib.tornado.base_hanlder import MyUserBaseHandler
 from bson import ObjectId
 from dtlib import jsontool
 from dtlib.aio.decos import my_async_jsonp
@@ -22,14 +22,14 @@ from dtlib.web.valuedict import ClientTypeDict
 from config import HTTP_PORT, mongodb_cfg, SERVER_PROCESS
 # from config_api import capt_image_domain
 # from xt_base.document.auth2_docs import MobileAuthPcToken
-# from xt_base.utils import user_id_is_legal, create_dft_organization, create_org_app, create_dft_org_rel
+# from dtlib.tornado.utils import user_id_is_legal, create_dft_organization, create_org_app, create_dft_org_rel
 import traceback
 
 from dtlib.tornado.utils import set_default_rc_tag
 from dtlib.tornado.status_cls import UserStatus, UserRegWay
 
 
-class CheckEnv(MyBaseHandler):
+class CheckEnv(MyUserBaseHandler):
     """
     检查环境
     """
@@ -63,7 +63,7 @@ class CheckEnv(MyBaseHandler):
         return get_std_json_response(data=jsontool.dumps(tbl_out, ensure_ascii=False))
 
 
-class AccountInit(MyBaseHandler):
+class AccountInit(MyUserBaseHandler):
     @my_async_jsonp
     async def get(self):
         """
@@ -199,7 +199,7 @@ class AccountInit(MyBaseHandler):
         return new_app
 
 
-class GetAuthUserOrganization(MyBaseHandler):
+class GetAuthUserOrganization(MyUserBaseHandler):
     @token_required()
     @my_async_jsonp
     async def get(self):
@@ -214,7 +214,7 @@ class GetAuthUserOrganization(MyBaseHandler):
         return get_std_json_response(data=jsontool.dumps(org_res, ensure_ascii=False))
 
 
-class UserLogin(MyBaseHandler):
+class UserLogin(MyUserBaseHandler):
     """
     用户登录,目前感觉还没有用到 2016-10-25
     todo: 后面在启用的时候,还需要继续fixbug
@@ -260,7 +260,7 @@ class UserLogin(MyBaseHandler):
             return ConstData.msg_fail
 
 
-class UserLogout(MyBaseHandler):
+class UserLogout(MyUserBaseHandler):
     """
     用户登录出，根据session来判断的,api，user,wechat都可以用这个
     """
@@ -275,7 +275,7 @@ class UserLogout(MyBaseHandler):
         return ConstData.msg_succeed
 
 
-class SetAuthUserInfo(MyBaseHandler):
+class SetAuthUserInfo(MyUserBaseHandler):
     """
     设置当前登录用户的信息,昵称,可以反复修改
     """
@@ -309,7 +309,7 @@ class SetAuthUserInfo(MyBaseHandler):
         return get_std_json_response(data=jsontool.dumps(res_dict, ensure_ascii=False))
 
 
-class GetAuthUserInfo(MyBaseHandler):
+class GetAuthUserInfo(MyUserBaseHandler):
     """
     获取当前登录用户的信息
     """
@@ -343,7 +343,7 @@ class GetAuthUserInfo(MyBaseHandler):
         return get_std_json_response(data=res_data)
 
 
-class UpdateUserDetailInfo(MyBaseHandler):
+class UpdateUserDetailInfo(MyUserBaseHandler):
     @token_required()
     @my_async_jsonp
     async def post(self):
@@ -382,7 +382,7 @@ class UpdateUserDetailInfo(MyBaseHandler):
         return ConstData.msg_succeed
 
 
-class GetUserDetailInfo(MyBaseHandler):
+class GetUserDetailInfo(MyUserBaseHandler):
     @token_required()
     @my_async_jsonp
     async def get(self):
@@ -399,7 +399,7 @@ class GetUserDetailInfo(MyBaseHandler):
             user_detail = {}
         return get_std_json_response(data=jsontool.dumps(user_detail))
 
-# class GetAuthUserAllOrganizations(MyBaseHandler):
+# class GetAuthUserAllOrganizations(MyUserBaseHandler):
 #     # TODO: change to motor
 #     @token_required()
 #     @my_async_jsonp
@@ -432,7 +432,7 @@ class GetUserDetailInfo(MyBaseHandler):
 
 # region  Organization CRUBL
 
-# class CreateDefaultOrganization(MyBaseHandler):
+# class CreateDefaultOrganization(MyUserBaseHandler):
 #     """
 #     创建默认的模板Organization
 #     """
@@ -448,7 +448,7 @@ class GetUserDetailInfo(MyBaseHandler):
 #         return get_std_json_response(data=invite_json)
 #
 #
-# class CreateOrganization(MyBaseHandler):
+# class CreateOrganization(MyUserBaseHandler):
 #     # TODO: change to motor
 #     """
 #     创建Organization
@@ -479,7 +479,7 @@ class GetUserDetailInfo(MyBaseHandler):
 #         return ConstData.msg_succeed
 #
 #
-# class GetInviteCode(MyBaseHandler):
+# class GetInviteCode(MyUserBaseHandler):
 #     # TODO: change to motor
 #     @token_required()
 #     @my_async_jsonp
@@ -520,7 +520,7 @@ class GetUserDetailInfo(MyBaseHandler):
 #         return get_std_json_response(data=invite_json)
 #
 #
-# class GetOrgInviteLink(MyBaseHandler):
+# class GetOrgInviteLink(MyUserBaseHandler):
 #     # TODO: change to motor
 #     @token_required()
 #     @my_async_jsonp
@@ -568,7 +568,7 @@ class GetUserDetailInfo(MyBaseHandler):
 #         return get_std_json_response(data=invite_json)
 #
 #
-# class AcceptOrgInviteByLink(MyBaseHandler):
+# class AcceptOrgInviteByLink(MyUserBaseHandler):
 #     # TODO: change to motor
 #     @my_async_jsonp
 #     async def get(self):
@@ -646,7 +646,7 @@ class GetUserDetailInfo(MyBaseHandler):
 #         return ConstData.msg_succeed
 #
 #
-# class ExitCurrentOrg(MyBaseHandler):
+# class ExitCurrentOrg(MyUserBaseHandler):
 #     # TODO: change to motor
 #     """
 #     退出当前组织：
@@ -690,7 +690,7 @@ class GetUserDetailInfo(MyBaseHandler):
 #         return ConstData.msg_succeed
 #
 #
-# class InviteUserToOrg(MyBaseHandler):
+# class InviteUserToOrg(MyUserBaseHandler):
 #     # TODO: change to motor
 #     """
 #     邀请用户到Organization
@@ -756,7 +756,7 @@ class GetUserDetailInfo(MyBaseHandler):
 #         return ConstData.msg_succeed
 #
 #
-# class ReadOrganization(MyBaseHandler):
+# class ReadOrganization(MyUserBaseHandler):
 #     # TODO: change to motor
 #     """
 #     读取Organization
@@ -773,7 +773,7 @@ class GetUserDetailInfo(MyBaseHandler):
 #         self.write(data)
 #
 #
-# class UpdateOrganization(MyBaseHandler):
+# class UpdateOrganization(MyUserBaseHandler):
 #     # TODO: change to motor
 #     """
 #     更改Organization名称
@@ -804,7 +804,7 @@ class GetUserDetailInfo(MyBaseHandler):
 #         return get_std_json_response(data=jsontool.dumps(res_dict, ensure_ascii=False))
 #
 #
-# class DeleteOrganization(MyBaseHandler):
+# class DeleteOrganization(MyUserBaseHandler):
 #     """
 #     创建Organization
 #     """
@@ -816,7 +816,7 @@ class GetUserDetailInfo(MyBaseHandler):
 #         self.write('post')
 #
 #
-# class GetOrgMember(MyBaseHandler):
+# class GetOrgMember(MyUserBaseHandler):
 #     # TODO: change to motor
 #     """
 #     获取Organization中所有的成员，并显示激活状态
@@ -857,7 +857,7 @@ class GetUserDetailInfo(MyBaseHandler):
 #         return get_std_json_response(data=jsontool.dumps(user_list, ensure_ascii=False))
 #
 #
-# class AuditOrgMember(MyBaseHandler):
+# class AuditOrgMember(MyUserBaseHandler):
 #     # TODO: change to motor
 #     """
 #     对用户加入组织的申请进行激活操作：确立有效的关系
@@ -899,7 +899,7 @@ class GetUserDetailInfo(MyBaseHandler):
 
 # code trash (2018-04-23)
 
-# class CreateUser(MyBaseHandler):
+# class CreateUser(MyUserBaseHandler):
 #     # TODO: change to motor
 #     """
 #     注册用户
@@ -943,7 +943,7 @@ class GetUserDetailInfo(MyBaseHandler):
 #         await user_reg_info.save()
 #         return ConstData.msg_succeed
 #
-# class SetAuthUserPwd(MyBaseHandler):
+# class SetAuthUserPwd(MyUserBaseHandler):
 #     # TODO: change to motor
 #     """
 #     设置当前登录用户的ID,只能修改一次
@@ -1001,7 +1001,7 @@ class GetUserDetailInfo(MyBaseHandler):
 #         return get_std_json_response(data=jsontool.dumps(res_dict, ensure_ascii=False))
 #
 #
-# class SetAuthUserId(MyBaseHandler):
+# class SetAuthUserId(MyUserBaseHandler):
 #     # TODO: change to motor
 #     """
 #     设置当前登录用户的ID,只能修改一次
@@ -1058,7 +1058,7 @@ class GetUserDetailInfo(MyBaseHandler):
 #         return get_std_json_response(data=jsontool.dumps(res_dict, ensure_ascii=False))
 #
 #
-# class GetMobileToken(MyBaseHandler):
+# class GetMobileToken(MyUserBaseHandler):
 #     # TODO: change to motor
 #     """
 #     从PC引导到手机上,然后创建一个refresh_token
@@ -1092,7 +1092,7 @@ class GetUserDetailInfo(MyBaseHandler):
 #         return get_std_json_response(data=jsontool.dumps(mobile_token.to_dict()))
 #
 #
-# class MobileAuthPc(MyBaseHandler):
+# class MobileAuthPc(MyUserBaseHandler):
 #     # TODO: change to motor
 #     """
 #     登录的手机给PC授权
@@ -1124,7 +1124,7 @@ class GetUserDetailInfo(MyBaseHandler):
 #         return ConstData.msg_succeed
 
 
-# class GetMobileAccessToken(MyBaseHandler):
+# class GetMobileAccessToken(MyUserBaseHandler):
 #     # TODO: change to motor
 #     """
 #     通过 refresh_token 来获取 access_token
@@ -1154,7 +1154,7 @@ class GetUserDetailInfo(MyBaseHandler):
 #         return get_std_json_response(data=jsontool.dumps(acc_token.to_dict()))
 #
 #
-# class LanApp(MyBaseHandler):
+# class LanApp(MyUserBaseHandler):
 #     # TODO: change to motor
 #     """
 #     重定向到内网app
@@ -1192,7 +1192,7 @@ class GetUserDetailInfo(MyBaseHandler):
 #         return std_res
 #
 #
-# class Feedback(MyBaseHandler):
+# class Feedback(MyUserBaseHandler):
 #     # TODO: change to motor
 #     """
 #     用户反馈信息

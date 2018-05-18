@@ -16,15 +16,16 @@ from dtlib.web.tools import get_std_json_response
 from pymongo import DESCENDING
 
 # from apps.admin.decos import perm_check
-from xt_base.base_server import MyBaseHandler
-from xt_base.utils import get_org_data
-from xt_base.utils import user_id_is_legal
+from dtlib.tornado.base_hanlder import MyUserBaseHandler
+from dtlib.tornado.utils import get_org_data
+from dtlib.tornado.utils import user_id_is_legal
 # from xt_base.document.acl_docs import UserGrpRel
 from dtlib.utils import list_have_none_mem, get_rand_salt, hashlibmd5with_salt
 from bson import ObjectId
+from apps.admin.decos import admin_required
 
 
-class ListOrganization(MyBaseHandler):
+class ListOrganization(MyUserBaseHandler):
     """
     创建Organization
     """
@@ -38,7 +39,7 @@ class ListOrganization(MyBaseHandler):
         self.write('post')
 
 
-class ResetAdminPassword(MyBaseHandler):
+class ResetAdminPassword(MyUserBaseHandler):
     """
     重置 admin 用户的密码
     """
@@ -65,37 +66,7 @@ class ResetAdminPassword(MyBaseHandler):
         return ConstData.msg_succeed
 
 
-class IsAdmin(MyBaseHandler):
-    """
-    是否是管理员
-    """
-
-    @token_required()
-    @deco_jsonp
-    async def get(self):
-        user = self.get_current_session_user()  # 获取当前用户
-        db = self.get_async_mongo()
-        user_rel_col = db.user_grp_rel
-        grp_rel = await user_rel_col.find_one({'user': user})
-        if grp_rel is None:
-            res = dict(
-                result=False
-            )
-            return get_std_json_response(data=jsontool.dumps(res))
-
-        if grp_rel['g_name'] == 'admin':
-            res = dict(
-                result=True
-            )
-            return get_std_json_response(data=jsontool.dumps(res))
-        else:
-            res = dict(
-                result=False
-            )
-            return get_std_json_response(data=jsontool.dumps(res))
-
-
-class AddUser(MyBaseHandler):
+class AddUser(MyUserBaseHandler):
     """
     添加用户
     """
@@ -103,7 +74,7 @@ class AddUser(MyBaseHandler):
     def __init__(self, *args, **kwargs):
         super(AddUser, self).__init__(*args, **kwargs)
 
-    @token_required()
+    @admin_required()
     @deco_jsonp()
     async def post(self, *args, **kwargs):
         post_json = self.get_post_body_dict()
@@ -144,32 +115,35 @@ class AddUser(MyBaseHandler):
         res = await user_org_col.find_one({
             'user': _id
         })
-        if not res:
+        data = dict(
+            user_name=nickname,
+            user=_id,
+            # organization=org_id,
+            is_active=True,
+            # org_name=org_name,
+            is_default=False,
+            is_owner=False,
+            is_current=True
+        )
+        if res is None:
             org_col = mongo_conn['organization']
             res = await org_col.find_one({
                 'is_del': False,
             })
             org_name = res['name']
+            org_id = res['_id']
         else:
             org_name = res['org_name']
-        org_id = res['_id']
-        data = dict(
-            user_name=nickname,
-            user=_id,
-            organization=org_id,
-            is_active=True,
-            org_name=org_name,
-            is_default=False,
-            is_owner=False,
-            is_current=True
-        )
+            org_id = res['organization']
+        data['org_name'] = org_name
+        data['organization'] = org_id
 
         data = wrap_default_rc_tag(data)  # 加上默认的标签
-        await user_org_col.update({'_id': org_id}, {'$set': data}, upsert=True)
+        await user_org_col.update({'user': _id}, {'$set': data}, upsert=True)
         return ConstData.msg_succeed
 
 
-class DeleteUser(MyBaseHandler):
+class DeleteUser(MyUserBaseHandler):
     """
     删除用户, 安全删除
     """
@@ -177,7 +151,7 @@ class DeleteUser(MyBaseHandler):
     def __init__(self, *args, **kwargs):
         super(DeleteUser, self).__init__(*args, **kwargs)
 
-    @token_required()
+    @admin_required()
     @deco_jsonp()
     async def post(self, *args, **kwargs):
         # todo: judge is admin
@@ -217,7 +191,7 @@ class DeleteUser(MyBaseHandler):
         return ConstData.msg_succeed
 
 
-class LockUser(MyBaseHandler):
+class LockUser(MyUserBaseHandler):
     """
     锁定用户, 禁止登录
     """
@@ -225,7 +199,7 @@ class LockUser(MyBaseHandler):
     def __init__(self, *args, **kwargs):
         super(LockUser, self).__init__(*args, **kwargs)
 
-    @token_required()
+    @admin_required()
     @deco_jsonp()
     async def post(self, *args, **kwargs):
         # todo: judge is admin
@@ -253,7 +227,7 @@ class LockUser(MyBaseHandler):
         return ConstData.msg_succeed
 
 
-class GetUserList(MyBaseHandler):
+class GetUserList(MyUserBaseHandler):
     """
     获取用户列表
     """
@@ -261,7 +235,7 @@ class GetUserList(MyBaseHandler):
     def __init__(self, *args, **kwargs):
         super(GetUserList, self).__init__(*args, **kwargs)
 
-    @token_required()
+    @admin_required()
     @deco_jsonp()
     async def get(self, *args, **kwargs):
         """
@@ -289,7 +263,7 @@ class GetUserList(MyBaseHandler):
         return get_std_json_response(data=jsontool.dumps(user_list))
 
 # code trash (2018-04-23 yx)
-# class ListUserInfo(MyBaseHandler):
+# class ListUserInfo(MyUserBaseHandler):
 #     """
 #     获取所有的用户的信息
 #     """
@@ -309,7 +283,7 @@ class GetUserList(MyBaseHandler):
 #             return await User.objects.order_by('rc_time', direction=DESCENDING).find_all()
 #
 #
-# class DeleteUser(MyBaseHandler):
+# class DeleteUser(MyUserBaseHandler):
 #     """
 #     删除用户
 #     """
@@ -327,7 +301,7 @@ class GetUserList(MyBaseHandler):
 #         return ConstData.msg_succeed
 #
 #
-# class OnlineUser(MyBaseHandler):
+# class OnlineUser(MyUserBaseHandler):
 #     """
 #     在线用户
 #     """
@@ -352,7 +326,7 @@ class GetUserList(MyBaseHandler):
 #         return online_user
 #
 #
-# class ListApiCallCount(MyBaseHandler):
+# class ListApiCallCount(MyUserBaseHandler):
 #     """
 #     read api调用次数
 #     """
@@ -365,7 +339,7 @@ class GetUserList(MyBaseHandler):
 #         return await ApiCallCounts.objects.order_by('counts', direction=DESCENDING).find_all()
 #
 #
-# class GetLogHistory(MyBaseHandler):
+# class GetLogHistory(MyUserBaseHandler):
 #     """
 #     read api调用次数
 #     """
@@ -378,7 +352,7 @@ class GetUserList(MyBaseHandler):
 #         return await LogHistory.objects.order_by('rc_time', direction=DESCENDING).find_all()
 #
 #
-# class GetUserCounts(MyBaseHandler):
+# class GetUserCounts(MyUserBaseHandler):
 #     @token_required()
 #     @deco_jsonp
 #     async def get(self):
@@ -406,7 +380,7 @@ class GetUserList(MyBaseHandler):
 #         return get_std_json_response(data=jsontool.dumps(res_dict, ensure_ascii=False))
 #
 #
-# class SetUserActiveStatus(MyBaseHandler):
+# class SetUserActiveStatus(MyUserBaseHandler):
 #     """
 #     设置用户激活信息
 #     1. 赋予默认组织
@@ -437,7 +411,7 @@ class GetUserList(MyBaseHandler):
 #         return ConstData.msg_succeed
 #
 #
-# class LoginHistory(MyBaseHandler):
+# class LoginHistory(MyUserBaseHandler):
 #     """
 #     人工调用接口的日志
 #     """

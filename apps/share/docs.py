@@ -1,13 +1,14 @@
 """
 分享link
 """
-from aiomotorengine import StringField, IntField
-from dtlib.tornado.base_docs import OrgUserDataDocument
-
-from xt_base.document.base_docs import ProjectBaseDocument
+# from aiomotorengine import StringField, IntField
+# from dtlib.tornado.base_docs import OrgUserDataDocument
+#
+# from xt_base.document.base_docs import ProjectBaseDocument
 
 
 # todo 后面都要加上项目的名称的冗余
+# TODO: 后面有需要重写相关功能
 
 class ShareTestReport(OrgUserDataDocument, ProjectBaseDocument):
     """
