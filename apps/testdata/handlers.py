@@ -97,8 +97,8 @@ class ListUnitTestData(MyUserBaseHandler):
         :return:返回插入的数据的id，方便后续做关联插入
         """
         pro_id = self.get_argument('pro_id', None)
-        # col_name = 'unit_test_data'
-        return await get_org_data_paginator(self, col_name='unit_test_data', pro_id=pro_id, hide_fields={'details': 0})
+        tag = self.get_arguments('tag')
+        return await get_org_data_paginator(self, col_name='unit_test_data', pro_id=pro_id, hide_fields={'details': 0}, tag=tag)
 
 
 class DeleteTestData(MyUserBaseHandler):
