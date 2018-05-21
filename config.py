@@ -4,7 +4,7 @@ import sys
 
 from dtlib.dbtool import DbSetting
 
-app_version = '4.18.5.18.1'  # 项目版本号
+app_version = '4.18.5.21.1'  # 项目版本号
 test_token = '1234'  # 用于超级管理员调用url的简单的token
 
 # if you use tornado project,this returns the root of the project
