@@ -166,7 +166,7 @@ class ReadProjectsRecord(MyUserBaseHandler):
     @my_async_jsonp
     async def get(self):
         id = self.get_argument('id', None)
-        tag = self.get_argument('tag', 'default')
+        tag = self.get_argument('tag')
         if id is None:
             return ConstData.msg_args_wrong
 
@@ -183,7 +183,7 @@ class ReadProjectsRecord(MyUserBaseHandler):
         if pro_org_id != user_org:
             return ConstData.msg_forbidden
 
-        return await get_org_data_paginator(self, col_name='unit_test_data', pro_id=id, tag=tag,
+        return await get_org_data_paginator(self, col_name='unit_test_data', pro_id=id, tag=[tag],
                                             hide_fields={'details': 0})
 
 

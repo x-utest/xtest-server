@@ -4,20 +4,15 @@ from dtlib.tornado.base_hanlder import MyUserBaseHandler
 from bson import ObjectId
 from dtlib import jsontool
 from dtlib.aio.base_mongo import wrap_default_rc_tag
-from dtlib.aio.decos import my_async_paginator, my_async_jsonp, my_async_paginator_list
+from dtlib.aio.decos import my_async_paginator, my_async_jsonp
 from dtlib.dtlog import dlog
 from dtlib.tornado.base_hanlder import MyAppBaseHandler
 from dtlib.tornado.decos import token_required, app_token_required
-# from dtlib.tornado.docs import TestDataApp
 from dtlib.utils import list_have_none_mem
-from dtlib.web.constcls import ConstData
+from dtlib.web.constcls import ConstData, ResCode
 from dtlib.web.decos import deco_jsonp
 from dtlib.web.tools import get_std_json_response
 from dtlib.web.valuedict import ClientTypeDict
-
-# from xt_base.document.testdata_docs import ApiTestData, ApiTestDataNote, PerformReport, SafetyTestReport, ApiReqDelay, \
-#     PenetrationTestData, PenetrationTestDataNote, ProxyipTestData, FeedbackMsg
-# from xt_base.document.base_docs import Project
 from dtlib.tornado.utils import get_org_data
 from dtlib.tornado.utils import wrap_org_tag, wrap_project_tag, get_org_data_paginator
 
@@ -210,12 +205,12 @@ class CreateUnitTestData(MyAppBaseHandler):
         if 'tags' in project.keys():
             pro_tags = project['tags']
             if tag in pro_tags:
-                return ConstData.msg_succeed
+                return ConstData.res_tpl % (ResCode.ok, 'success', '"' + str(insert_res) + '"')
         else:
             pro_tags = []
         pro_tags.append(tag)
         await proj_col.update({'_id': ObjectId(pro_id)}, {'$set': {'tags': pro_tags}})
-        return ConstData.msg_succeed
+        return ConstData.res_tpl % (ResCode.ok, 'success', '"' + str(insert_res) + '"')
 
 
 class GetOneUnitTestData(MyUserBaseHandler):
