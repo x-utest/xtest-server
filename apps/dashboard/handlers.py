@@ -53,7 +53,7 @@ class UpdateContent(MyUserBaseHandler):
             await mycol.update({'_id': ObjectId(content_id)}, {'$set': data}, upsert=True)
             return ConstData.msg_succeed
         else:
-            _id = await mycol.insert(data)
+            _id = await mycol.insert_one(data)
             msg_succeed = '{"code":%s,"msg":"%s","data":{"_id": "%s"}}' % (ResCode.ok, "success", _id)
             return msg_succeed
 
@@ -126,7 +126,7 @@ class GetContent(MyUserBaseHandler):
                 "is_del": False
             }, hide_fields).sort([('date_time', DESCENDING)])  # 升序排列
 
-        msg_details_cnt = await msg_details.count()
+        msg_details_cnt = await msg_details.count_documents()
         page_size = page_cap if page_cap < msg_details_cnt else msg_details_cnt
         msg_content_list = await msg_details.to_list(page_size)
         return get_std_json_response(data=jsontool.dumps(msg_content_list))

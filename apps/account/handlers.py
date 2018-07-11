@@ -43,19 +43,15 @@ class CheckEnv(MyUserBaseHandler):
             'mongo_port': mongodb_cfg.port
         }
         try:
-            con = motor.MotorClient(host=mongodb_cfg.host, port=mongodb_cfg.port)
+            con = motor.MotorCliento(host=mongodb_cfg.host, port=mongodb_cfg.port)
             db = con[mongodb_cfg.db_name]
-            res = await db.authenticate(mongodb_cfg.user_name, mongodb_cfg.user_pwd)
-            if res is True:
-                tbl_out['connect'] = True
-                user_id = "admin"
-                db = self.get_async_mongo()
-                user_col = db.g_users
-                res = await user_col.find_one({'user_id': user_id})
-                if res:
-                    return ConstData.msg_exist
-            else:
-                tbl_out['connect'] = False
+            tbl_out['connect'] = True
+            user_id = "admin"
+            db = self.get_async_mongo()
+            user_col = db.g_users
+            res = await user_col.find_one({'user_id': user_id})
+            if res:
+                return ConstData.msg_exist
         except:
             traceback.print_exc()
             tbl_out['connect'] = "mongodb connect error"
@@ -90,7 +86,7 @@ class AccountInit(MyUserBaseHandler):
         }
         new_user = set_default_rc_tag(new_user)
         new_user.update(self.set_template())
-        user_res = await user_col.insert(new_user)
+        user_res = await user_col.insert_one(new_user)
         # new_user = await new_user.save()
         # """:type:User"""
 
@@ -101,7 +97,7 @@ class AccountInit(MyUserBaseHandler):
 
         new_user_reg_info.update(self.set_http_tag())
         new_user_reg_info = set_default_rc_tag(new_user_reg_info)
-        await user_reg_col.insert(new_user_reg_info)
+        await user_reg_col.insert_one(new_user_reg_info)
         # await user_reg_info.save()
 
         org = await self.create_dft_organization(new_user_reg_info, is_default=True)
@@ -140,7 +136,7 @@ class AccountInit(MyUserBaseHandler):
         )
         new_org = set_default_rc_tag(new_org)
         # default_org.owner_name = user.nickname  # 冗余
-        org_id = await org_col.insert(new_org)
+        org_id = await org_col.insert_one(new_org)
         new_org['_id'] = org_id
         return new_org
 
@@ -172,7 +168,7 @@ class AccountInit(MyUserBaseHandler):
         )
         new_rel = set_default_rc_tag(new_rel)
         # user_org_rel.user_name = user.nickname  # 冗余
-        return await user_org_rel_col.insert(new_rel)
+        return await user_org_rel_col.insert_one(new_rel)
 
     async def create_org_app(self, default_org):
         """
@@ -194,7 +190,7 @@ class AccountInit(MyUserBaseHandler):
         )
 
         new_app = set_default_rc_tag(new_app)
-        app_id = await app_col.insert(new_app)
+        app_id = await app_col.insert_one(new_app)
         new_app['_id'] = app_id
         return new_app
 

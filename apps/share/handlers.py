@@ -79,7 +79,7 @@ class GetUtestShareLink(MyUserBaseHandler):
             # await share_obj.set_project_tag(project)
             # await share_obj.set_org_user_tag(http_req=self)
             share_data = set_default_rc_tag(share_data)
-            await share_col.insert(share_data)
+            await share_col.insert_one(share_data)
             share_url = share_page + stoken
         else:
             # 如果有，则直接使用
@@ -202,7 +202,7 @@ class GetProjectShareLink(MyUserBaseHandler):
                 tag=tag
             )
             share_data = set_default_rc_tag(share_data)
-            await share_col.insert(share_data)
+            await share_col.insert_one(share_data)
             share_url = pro_share_page + stoken
         else:
             # 如果有，则直接使用
@@ -265,7 +265,7 @@ class GetProjectShareData(MyUserBaseHandler):
             condition, {"details": 0},
             sort=[('rc_time', DESCENDING)])
 
-        page_count = await res.count()
+        page_count = await res.count_documents()
         msg_details = res.skip(page_size * (page_idx - 1)).limit(page_size)  # 进行分页
 
         total_page = math.ceil(page_count / page_size)  # 总的页面数

@@ -130,7 +130,7 @@ class DeleteTestData(MyUserBaseHandler):
             pro_id = testdata['pro_id']
             tag = testdata['tag']
             # todo: count records of this tag, if < 1, delete tag in project
-            tags = await mycol.find({"pro_id": ObjectId(pro_id), 'is_del': False, 'tag': tag}, {'tag': 1}).count()
+            tags = await mycol.find({"pro_id": ObjectId(pro_id), 'is_del': False, 'tag': tag}, {'tag': 1}).count_documents()
             if tags < 1:
                 project = await pro_col.find_one({"_id": ObjectId(pro_id)})
                 proj_tags = project['tags']
@@ -201,7 +201,7 @@ class CreateUnitTestData(MyAppBaseHandler):
         req_dict = wrap_project_tag(req_dict, project)  # 加上项目标签
         req_dict = wrap_default_rc_tag(req_dict)  # 加上默认的标签
         req_dict = wrap_org_tag(req_dict, str(pro_org_id))  # 加上组织的标签
-        insert_res = await test_data_col.insert(req_dict)
+        insert_res = await test_data_col.insert_one(req_dict)
         if 'tags' in project.keys():
             pro_tags = project['tags']
             if tag in pro_tags:

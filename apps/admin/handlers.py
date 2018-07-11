@@ -108,7 +108,7 @@ class AddUser(MyUserBaseHandler):
         if _id:
             await mycol.update({'_id': _id}, {'$set': data}, upsert=True)
         else:
-            _id = await mycol.insert(data)
+            _id = await mycol.insert_one(data)
 
         # todo: select orgnization
         user_org_col = mongo_conn['user_org_rel']
@@ -258,7 +258,7 @@ class GetUserList(MyUserBaseHandler):
         user_list = mycol.find({
             "is_del": False
         }, show_field)  # 升序排列
-        user_cnt = await user_list.count()
+        user_cnt = await user_list.count_documents()
         user_list = await user_list.to_list(user_cnt)
         return get_std_json_response(data=jsontool.dumps(user_list))
 

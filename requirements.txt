@@ -3,9 +3,9 @@
 requests==2.18.4
 
 #mongodb
-motor==1.2.1
+motor==2.0
 
-tornado==4.3
+tornado==5.0.2
 #torndsession==1.1.4
 
 tabulate==0.8.2
