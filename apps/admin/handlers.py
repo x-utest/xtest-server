@@ -109,6 +109,7 @@ class AddUser(MyUserBaseHandler):
             await mycol.update({'_id': _id}, {'$set': data}, upsert=True)
         else:
             _id = await mycol.insert_one(data)
+            _id = _id.inserted_id
 
         # todo: select orgnization
         user_org_col = mongo_conn['user_org_rel']

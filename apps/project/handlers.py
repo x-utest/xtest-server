@@ -79,7 +79,7 @@ class CreateTestProject(MyUserBaseHandler):
 
         result = await proj_col.insert_one(new_data)
 
-        res_str = get_std_json_response(code=200, data=jsontool.dumps(result))
+        res_str = get_std_json_response(code=200, data=jsontool.dumps(result.inserted_id))
 
         return res_str
 

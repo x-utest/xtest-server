@@ -54,6 +54,7 @@ class UpdateContent(MyUserBaseHandler):
             return ConstData.msg_succeed
         else:
             _id = await mycol.insert_one(data)
+            _id = _id.inserted_id
             msg_succeed = '{"code":%s,"msg":"%s","data":{"_id": "%s"}}' % (ResCode.ok, "success", _id)
             return msg_succeed
 

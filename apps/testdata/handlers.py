@@ -202,6 +202,7 @@ class CreateUnitTestData(MyAppBaseHandler):
         req_dict = wrap_default_rc_tag(req_dict)  # 加上默认的标签
         req_dict = wrap_org_tag(req_dict, str(pro_org_id))  # 加上组织的标签
         insert_res = await test_data_col.insert_one(req_dict)
+        insert_res = insert_res.inserted_id
         if 'tags' in project.keys():
             pro_tags = project['tags']
             if tag in pro_tags:

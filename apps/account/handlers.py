@@ -87,6 +87,7 @@ class AccountInit(MyUserBaseHandler):
         new_user = set_default_rc_tag(new_user)
         new_user.update(self.set_template())
         user_res = await user_col.insert_one(new_user)
+        user_res = user_res.inserted_id
         # new_user = await new_user.save()
         # """:type:User"""
 
@@ -137,6 +138,7 @@ class AccountInit(MyUserBaseHandler):
         new_org = set_default_rc_tag(new_org)
         # default_org.owner_name = user.nickname  # 冗余
         org_id = await org_col.insert_one(new_org)
+        org_id = org_id.inserted_id
         new_org['_id'] = org_id
         return new_org
 
@@ -191,6 +193,7 @@ class AccountInit(MyUserBaseHandler):
 
         new_app = set_default_rc_tag(new_app)
         app_id = await app_col.insert_one(new_app)
+        app_id = app_id.inserted_id
         new_app['_id'] = app_id
         return new_app
 
