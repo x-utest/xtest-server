@@ -85,7 +85,7 @@ class AccountInit(MyUserBaseHandler):
             'passwd': hashlibmd5with_salt(passwd, rand_salt)
         }
         new_user = set_default_rc_tag(new_user)
-        new_user.update(self.set_template())
+        new_user.update_one(self.set_template())
         user_res = await user_col.insert_one(new_user)
         user_res = user_res.inserted_id
         # new_user = await new_user.save()
@@ -295,7 +295,7 @@ class SetAuthUserInfo(MyUserBaseHandler):
         current_auth_user = await user_col.find_one({'_id': self.cache_session['user']})
 
         current_auth_user['nickname'] = nickname
-        await user_col.update({'_id': self.cache_session['user']},
+        await user_col.update_one({'_id': self.cache_session['user']},
                               {'$set': {'nickname': nickname}}, upsert=False)
         # current_auth_user = await current_auth_user.save()
 
@@ -377,7 +377,7 @@ class UpdateUserDetailInfo(MyUserBaseHandler):
             new_user_detail = set_default_rc_tag(new_user_detail)
             user_detail.update(new_user_detail)
 
-        user_detail_col.update({'user': user}, {'$set': user_detail}, upsert=True)
+        user_detail_col.update_one({'user': user}, {'$set': user_detail}, upsert=True)
         return ConstData.msg_succeed
 
 

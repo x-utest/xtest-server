@@ -61,7 +61,7 @@ class ResetAdminPassword(MyUserBaseHandler):
         db = self.get_async_mongo()
         user_col = db.g_users
         old_session = await user_col.find_one({'user_id': 'admin'})
-        await user_col.update({'user_id': 'admin'},
+        await user_col.update_one({'user_id': 'admin'},
                               {'$set': {'passwd': hashlibmd5with_salt(new_user_pwd, old_session['salt'])}})
         return ConstData.msg_succeed
 
@@ -106,7 +106,7 @@ class AddUser(MyUserBaseHandler):
 
         data = wrap_default_rc_tag(data)  # 加上默认的标签
         if _id:
-            await mycol.update({'_id': _id}, {'$set': data}, upsert=True)
+            await mycol.update_one({'_id': _id}, {'$set': data}, upsert=True)
         else:
             _id = await mycol.insert_one(data)
             _id = _id.inserted_id
@@ -140,7 +140,7 @@ class AddUser(MyUserBaseHandler):
         data['organization'] = org_id
 
         data = wrap_default_rc_tag(data)  # 加上默认的标签
-        await user_org_col.update({'user': _id}, {'$set': data}, upsert=True)
+        await user_org_col.update_one({'user': _id}, {'$set': data}, upsert=True)
         return ConstData.msg_succeed
 
 
@@ -176,7 +176,7 @@ class DeleteUser(MyUserBaseHandler):
             is_del=True
         )
         # todo: set del_time
-        await mycol.update({'_id': ObjectId(_id)}, {'$set': data}, upsert=False)
+        await mycol.update_one({'_id': ObjectId(_id)}, {'$set': data}, upsert=False)
 
         # update user_org_rel
         user_org_col = mongo_conn['user_org_rel']
@@ -187,7 +187,7 @@ class DeleteUser(MyUserBaseHandler):
             data = dict(
                 is_del=True
             )
-            await user_org_col.update({'user': _id}, {'$set': data}, upsert=False)
+            await user_org_col.update_one({'user': _id}, {'$set': data}, upsert=False)
 
         return ConstData.msg_succeed
 
@@ -224,7 +224,7 @@ class LockUser(MyUserBaseHandler):
         data = dict(
             is_lock=is_lock
         )
-        await mycol.update({'_id': ObjectId(_id)}, {'$set': data}, upsert=False)
+        await mycol.update_one({'_id': ObjectId(_id)}, {'$set': data}, upsert=False)
         return ConstData.msg_succeed
 
 
@@ -259,7 +259,7 @@ class GetUserList(MyUserBaseHandler):
         user_list = mycol.find({
             "is_del": False
         }, show_field)  # 升序排列
-        user_cnt = await user_list.count_documents()
+        user_cnt = await user_list.count()
         user_list = await user_list.to_list(user_cnt)
         return get_std_json_response(data=jsontool.dumps(user_list))
 

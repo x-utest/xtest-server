@@ -124,18 +124,18 @@ class DeleteTestData(MyUserBaseHandler):
         if pro_org_id != user_org:
             return ConstData.msg_forbidden
 
-        await mycol.update({"_id": ObjectId(str(id))}, {"$set": {"is_del": True}})
+        await mycol.update_one({"_id": ObjectId(str(id))}, {"$set": {"is_del": True}})
 
         if 'tag' in testdata.keys():
             pro_id = testdata['pro_id']
             tag = testdata['tag']
             # todo: count records of this tag, if < 1, delete tag in project
-            tags = await mycol.find({"pro_id": ObjectId(pro_id), 'is_del': False, 'tag': tag}, {'tag': 1}).count_documents()
+            tags = await mycol.find({"pro_id": ObjectId(pro_id), 'is_del': False, 'tag': tag}, {'tag': 1}).count()
             if tags < 1:
                 project = await pro_col.find_one({"_id": ObjectId(pro_id)})
                 proj_tags = project['tags']
                 proj_tags.remove(tag)
-                await pro_col.update({"_id": ObjectId(pro_id)}, {"$set": {"tags": proj_tags}})
+                await pro_col.update_one({"_id": ObjectId(pro_id)}, {"$set": {"tags": proj_tags}})
         return ConstData.msg_succeed
 
 
@@ -210,7 +210,7 @@ class CreateUnitTestData(MyAppBaseHandler):
         else:
             pro_tags = []
         pro_tags.append(tag)
-        await proj_col.update({'_id': ObjectId(pro_id)}, {'$set': {'tags': pro_tags}})
+        await proj_col.update_one({'_id': ObjectId(pro_id)}, {'$set': {'tags': pro_tags}})
         return ConstData.res_tpl % (ResCode.ok, 'success', '"' + str(insert_res) + '"')
 
 

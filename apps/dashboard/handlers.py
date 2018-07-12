@@ -50,7 +50,7 @@ class UpdateContent(MyUserBaseHandler):
         )
         data = wrap_default_rc_tag(data)  # 加上默认的标签
         if content_id:
-            await mycol.update({'_id': ObjectId(content_id)}, {'$set': data}, upsert=True)
+            await mycol.update_one({'_id': ObjectId(content_id)}, {'$set': data}, upsert=True)
             return ConstData.msg_succeed
         else:
             _id = await mycol.insert_one(data)
@@ -77,7 +77,7 @@ class DeleteContent(MyUserBaseHandler):
             return ConstData.msg_args_wrong
         mongo_conn = self.get_async_mongo()
         mycol = mongo_conn['dashboard_content']
-        mycol.update({'_id': ObjectId(content_id)}, {'$set': {'is_del': True}}, upsert=False)
+        mycol.update_one({'_id': ObjectId(content_id)}, {'$set': {'is_del': True}}, upsert=False)
         return ConstData.msg_succeed
 
 
@@ -127,7 +127,7 @@ class GetContent(MyUserBaseHandler):
                 "is_del": False
             }, hide_fields).sort([('date_time', DESCENDING)])  # 升序排列
 
-        msg_details_cnt = await msg_details.count_documents()
+        msg_details_cnt = await msg_details.count()
         page_size = page_cap if page_cap < msg_details_cnt else msg_details_cnt
         msg_content_list = await msg_details.to_list(page_size)
         return get_std_json_response(data=jsontool.dumps(msg_content_list))
@@ -158,5 +158,5 @@ class UpdateProjectShow(MyUserBaseHandler):
             tags = project['tags']
             if set(tv_tags).issubset(set(tags)) is False:
                 return ConstData.msg_args_wrong
-        await mycol.update({'_id': ObjectId(pro_id)}, {'$set': {'tv_tags': tv_tags}}, upsert=False)
+        await mycol.update_one({'_id': ObjectId(pro_id)}, {'$set': {'tv_tags': tv_tags}}, upsert=False)
         return ConstData.msg_succeed

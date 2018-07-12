@@ -124,7 +124,7 @@ class GetUtestShareData(MyUserBaseHandler):
         if cnt is None:
             cnt = 0
         cnt += 1
-        await share_col.update({'stoken': stoken}, {'$set':{'cnt': cnt}})
+        await share_col.update_one({'stoken': stoken}, {'$set':{'cnt': cnt}})
 
         return get_std_json_response(data=jsontool.dumps(msg_content, ensure_ascii=False))
 
@@ -241,7 +241,7 @@ class GetProjectShareData(MyUserBaseHandler):
             return ConstData.msg_forbidden
 
         # 做一个阅读访问次数的计数
-        await share_col.update({'stoken': stoken}, {'$inc':{'cnt': 1}})
+        await share_col.update_one({'stoken': stoken}, {'$inc':{'cnt': 1}})
 
         condition = {
             "pro_id": share_obj['project'],
@@ -265,7 +265,7 @@ class GetProjectShareData(MyUserBaseHandler):
             condition, {"details": 0},
             sort=[('rc_time', DESCENDING)])
 
-        page_count = await res.count_documents()
+        page_count = await res.count()
         msg_details = res.skip(page_size * (page_idx - 1)).limit(page_size)  # 进行分页
 
         total_page = math.ceil(page_count / page_size)  # 总的页面数
@@ -328,7 +328,7 @@ class UpdateUtestShare(MyUserBaseHandler):
         if res is None:
             return ConstData.msg_forbidden
 
-        await share_col.update({'_id': ObjectId(str(share_id)), 'owner': user_result['_id']},
+        await share_col.update_one({'_id': ObjectId(str(share_id)), 'owner': user_result['_id']},
                                {'$set': {'mark': mark}})
         return ConstData.msg_succeed
 
@@ -383,7 +383,7 @@ class UpdateProjectShare(MyUserBaseHandler):
 
         if res is None:
             return ConstData.msg_forbidden
-        await share_col.update({'_id': ObjectId(str(share_id)), 'owner': user_result['_id']},
+        await share_col.update_one({'_id': ObjectId(str(share_id)), 'owner': user_result['_id']},
                                {'$set': {'mark': mark}})
         return ConstData.msg_succeed
 

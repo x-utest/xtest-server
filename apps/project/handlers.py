@@ -119,7 +119,7 @@ class UpdateTestProject(MyUserBaseHandler):
             project_name=project_name,
             mark=mark
         )
-        result = await proj_col.update({'_id': ObjectId(str(id))}, {'$set': data}, upsert=False)
+        result = await proj_col.update_one({'_id': ObjectId(str(id))}, {'$set': data}, upsert=False)
         res_str = get_std_json_response(code=200, data=jsontool.dumps(result))
 
         return res_str
@@ -151,9 +151,9 @@ class DeleteTestProject(MyUserBaseHandler):
         if pro_org_id != user_org:
             return ConstData.msg_forbidden
 
-        await proj_col.update({'_id': ObjectId(str(id))}, {'$set': {'is_del': True}}, upsert=False)
+        await proj_col.update_one({'_id': ObjectId(str(id))}, {'$set': {'is_del': True}}, upsert=False)
         # 删除附属于项目的测试结果
-        await test_data_col.update({'pro_id': ObjectId(str(id))}, {'$set': {'is_del': True}}, multi=True)
+        await test_data_col.update_one({'pro_id': ObjectId(str(id))}, {'$set': {'is_del': True}}, multi=True)
         return ConstData.msg_succeed
 
 
