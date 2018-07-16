@@ -124,7 +124,7 @@ class DeleteTestData(MyUserBaseHandler):
         if pro_org_id != user_org:
             return ConstData.msg_forbidden
 
-        await mycol.update({"_id": ObjectId(str(id))}, {"$set": {"is_del": True}})
+        await mycol.update_one({"_id": ObjectId(str(id))}, {"$set": {"is_del": True}})
 
         if 'tag' in testdata.keys():
             pro_id = testdata['pro_id']
@@ -135,7 +135,7 @@ class DeleteTestData(MyUserBaseHandler):
                 project = await pro_col.find_one({"_id": ObjectId(pro_id)})
                 proj_tags = project['tags']
                 proj_tags.remove(tag)
-                await pro_col.update({"_id": ObjectId(pro_id)}, {"$set": {"tags": proj_tags}})
+                await pro_col.update_one({"_id": ObjectId(pro_id)}, {"$set": {"tags": proj_tags}})
         return ConstData.msg_succeed
 
 
@@ -145,12 +145,13 @@ class CreateUnitTestData(MyAppBaseHandler):
     """
 
     @app_token_required()
-    @my_async_jsonp
+    # @my_async_jsonp
     async def post(self):
         """
         客户端将整个报告上传到服务器
         :return:
         """
+        token = self.get_argument('token', None)
         req_dict = self.get_post_body_dict()
 
         # 做好字段的检查工作
@@ -201,16 +202,19 @@ class CreateUnitTestData(MyAppBaseHandler):
         req_dict = wrap_project_tag(req_dict, project)  # 加上项目标签
         req_dict = wrap_default_rc_tag(req_dict)  # 加上默认的标签
         req_dict = wrap_org_tag(req_dict, str(pro_org_id))  # 加上组织的标签
-        insert_res = await test_data_col.insert(req_dict)
+        insert_res = await test_data_col.insert_one(req_dict)
+        insert_res = insert_res.inserted_id
         if 'tags' in project.keys():
             pro_tags = project['tags']
-            if tag in pro_tags:
-                return ConstData.res_tpl % (ResCode.ok, 'success', '"' + str(insert_res) + '"')
+            # if tag in pro_tags:
+            #     return ConstData.res_tpl % (ResCode.ok, 'success', '"' + str(insert_res) + '"')
         else:
             pro_tags = []
-        pro_tags.append(tag)
-        await proj_col.update({'_id': ObjectId(pro_id)}, {'$set': {'tags': pro_tags}})
-        return ConstData.res_tpl % (ResCode.ok, 'success', '"' + str(insert_res) + '"')
+        if tag not in pro_tags:
+            pro_tags.append(tag)
+        await proj_col.update_one({'_id': ObjectId(pro_id)}, {'$set': {'tags': pro_tags}})
+            # return ConstData.res_tpl % (ResCode.ok, 'success', '"' + str(insert_res) + '"')
+        self.redirect('/share/get-utest-share-link/?token={}&rep_id={}'.format(token, insert_res))
 
 
 class GetOneUnitTestData(MyUserBaseHandler):
